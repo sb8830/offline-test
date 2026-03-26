@@ -5,32 +5,35 @@ from plotly.subplots import make_subplots
 import io
 from datetime import datetime
 
-st.set_page_config(page_title="Seminar Intelligence Dashboard", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Seminar Attendee Dashboard", page_icon="🎯", layout="wide")
 
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 html,body,[class*="css"]{font-family:'DM Sans',sans-serif;}
 .main{background:#0d0f14;}
-.block-container{padding:1.5rem 2rem 2rem 2rem;max-width:1500px;}
-.dash-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.07);}
-.dash-title{font-size:22px;font-weight:600;color:#f0f2f7;letter-spacing:-0.3px;}
-.dash-sub{font-size:13px;color:#6b7280;margin-top:3px;font-family:'DM Mono',monospace;}
-.live-pill{background:rgba(29,158,117,0.15);color:#34d399;border:1px solid rgba(52,211,153,0.25);padding:4px 12px;border-radius:99px;font-size:11px;font-weight:500;letter-spacing:.05em;}
-.metric-card{background:#161922;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1.1rem 1.2rem;position:relative;overflow:hidden;margin-bottom:14px;}
-.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#4f8ef7,#7c5af7);opacity:.6;}
-.m-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
-.m-value{font-size:26px;font-weight:600;color:#f0f2f7;line-height:1;font-family:'DM Mono',monospace;}
-.m-badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:99px;margin-top:8px;font-weight:500;}
-.badge-up{background:rgba(29,158,117,0.15);color:#34d399;}
-.badge-down{background:rgba(226,75,74,0.15);color:#f87171;}
-.badge-neu{background:rgba(107,114,128,0.15);color:#9ca3af;}
-.badge-warn{background:rgba(251,191,36,0.15);color:#fbbf24;}
-.section-head{font-size:11px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;}
-.section-divider{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:1.5rem 0;}
-.tab-head{font-size:16px;font-weight:500;color:#f0f2f7;margin-bottom:4px;}
-.tab-sub{font-size:13px;color:#6b7280;margin-bottom:1rem;}
-.upload-box{background:#161922;border:1.5px dashed rgba(79,142,247,0.35);border-radius:14px;padding:1.5rem;text-align:center;margin-bottom:1rem;}
+.block-container{padding:1.5rem 2rem 2rem 2rem;max-width:1600px;}
+
+.dash-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.07);}
+.dash-title{font-size:21px;font-weight:600;color:#f0f2f7;letter-spacing:-0.3px;}
+.dash-sub{font-size:12px;color:#6b7280;margin-top:3px;font-family:'DM Mono',monospace;}
+.live-pill{background:rgba(79,142,247,0.15);color:#4f8ef7;border:1px solid rgba(79,142,247,0.3);padding:4px 12px;border-radius:99px;font-size:11px;font-weight:500;}
+
+.metric-card{background:#161922;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.15rem;position:relative;overflow:hidden;margin-bottom:12px;}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#4f8ef7,#7c5af7);opacity:.7;}
+.m-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.m-value{font-size:24px;font-weight:600;color:#f0f2f7;line-height:1;font-family:'DM Mono',monospace;}
+.m-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;margin-top:7px;font-weight:500;}
+.badge-up{background:rgba(52,211,153,0.12);color:#34d399;}
+.badge-down{background:rgba(248,113,113,0.12);color:#f87171;}
+.badge-warn{background:rgba(251,191,36,0.12);color:#fbbf24;}
+.badge-neu{background:rgba(107,114,128,0.12);color:#9ca3af;}
+.badge-blue{background:rgba(79,142,247,0.12);color:#4f8ef7;}
+
+.filter-label{font-size:11px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.section-head{font-size:11px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+.section-divider{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:1.2rem 0;}
+.filter-bar{background:#161922;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1.2rem;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -39,76 +42,95 @@ BG   = "#161922"; GRID = "rgba(255,255,255,0.05)"; TEXT = "#9ca3af"
 BLUE = "#4f8ef7"; PURP = "#7c5af7"; GRN  = "#34d399"
 AMB  = "#fbbf24"; RED  = "#f87171"; GRAY = "#6b7280"; TEAL = "#2dd4bf"
 
-CHART_LAYOUT = dict(paper_bgcolor=BG, plot_bgcolor=BG,
-                    font=dict(family="DM Sans", color=TEXT, size=12),
-                    margin=dict(l=0, r=0, t=10, b=0))
+BASE_LAYOUT = dict(paper_bgcolor=BG, plot_bgcolor=BG,
+                   font=dict(family="DM Sans", color=TEXT, size=12),
+                   margin=dict(l=0, r=0, t=8, b=0))
 
-def kpi_card(label, value, badge, kind="up"):
-    bc = {"up":"badge-up","down":"badge-down","neu":"badge-neu","warn":"badge-warn"}[kind]
+def kpi(label, value, badge, kind="neu"):
+    bc = {"up":"badge-up","down":"badge-down","warn":"badge-warn","neu":"badge-neu","blue":"badge-blue"}[kind]
     return f"""<div class="metric-card"><div class="m-label">{label}</div>
-    <div class="m-value">{value}</div>
-    <div><span class="m-badge {bc}">{badge}</span></div></div>"""
+<div class="m-value">{value}</div><span class="m-badge {bc}">{badge}</span></div>"""
 
-def fmt_cr(v): return f"₹{v/1e7:.2f}Cr" if v >= 1e7 else (f"₹{v/1e5:.1f}L" if v >= 1e5 else f"₹{v:,.0f}")
+def fmt_inr(v):
+    if v >= 1e7:  return f"₹{v/1e7:.2f} Cr"
+    if v >= 1e5:  return f"₹{v/1e5:.1f} L"
+    return f"₹{v:,.0f}"
 
-# ── Session state ─────────────────────────────────────────────────────────────
-for k in ["conv","seminar","indepth","report","loaded"]:
-    if k not in st.session_state:
-        st.session_state[k] = None
-if "loaded" not in st.session_state:
-    st.session_state.loaded = False
+PAYMENT_MODE_MAP = {
+    "mode1":"Full Payment","mode2":"Installment","mode3":"EMI",
+    "mode4":"Partial","mode5":"Other","mode6":"Other",
+    "mode8":"Other","mode10":"Other","mode11":"Other",
+    "mode12":"Other","mode13":"Scholarship/Discount"
+}
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DATA PROCESSING
+# SESSION STATE
+# ══════════════════════════════════════════════════════════════════════════════
+if "master" not in st.session_state: st.session_state.master = None
+if "loaded" not in st.session_state: st.session_state.loaded = False
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DATA LOADER
 # ══════════════════════════════════════════════════════════════════════════════
 @st.cache_data(show_spinner=False)
-def process_all(conv_bytes, sem_bytes, indepth_bytes, report_bytes):
-    results = {}
-
-    # ── Conversion List ───────────────────────────────────────────────────────
+def load_and_merge(sem_bytes, conv_bytes):
+    df_sem  = pd.read_csv(io.BytesIO(sem_bytes))
     df_conv = pd.read_excel(io.BytesIO(conv_bytes))
-    df_conv['order_date'] = pd.to_datetime(df_conv['order_date'], errors='coerce', utc=True)
-    df_conv['order_date'] = df_conv['order_date'].dt.tz_localize(None)
-    df_conv['month'] = df_conv['order_date'].dt.to_period('M').astype(str)
+
+    # ── Normalise Seminar CSV ─────────────────────────────────────────────────
+    df_sem.columns = df_sem.columns.str.strip()
+    df_sem['Is Attended ?']        = df_sem['Is Attended ?'].astype(str).str.strip().str.upper()
+    df_sem['Is Converted ?']       = df_sem['Is Converted ?'].astype(str).str.strip().str.upper()
+    df_sem['Session']              = df_sem['Session'].astype(str).str.strip().str.upper()
+    df_sem['TRADER']               = df_sem['TRADER'].astype(str).str.strip().str.upper()
+    df_sem['Is our Student ?']     = df_sem['Is our Student ?'].astype(str).str.strip().str.upper()
+    df_sem['Trainer / Presenter']  = df_sem['Trainer / Presenter'].astype(str).str.strip().str.upper()
+    df_sem['Place']                = df_sem['Place'].astype(str).str.strip().str.upper()
+    df_sem['Seminar Date']         = pd.to_datetime(df_sem['Seminar Date'], errors='coerce', dayfirst=True)
+    df_sem['Amount Paid']          = pd.to_numeric(df_sem['Amount Paid'], errors='coerce').fillna(0)
+    df_sem['mobile_clean']         = df_sem['Mobile'].astype(str).str.replace(r'\D','',regex=True).str[-10:]
+
+    # Keep only attended
+    attended = df_sem[df_sem['Is Attended ?'] == 'YES'].copy().reset_index(drop=True)
+
+    # Standardise conversion status
+    attended['Conversion Status'] = attended['Is Converted ?'].apply(
+        lambda x: 'Converted' if x in ['CONVERTED','YES'] else ('Not Converted' if 'NOT' in str(x) else 'Not Converted')
+    )
+
+    # ── Normalise Conversion List ─────────────────────────────────────────────
+    df_conv['order_date']       = pd.to_datetime(df_conv['order_date'], errors='coerce', utc=True).dt.tz_localize(None)
     df_conv['payment_received'] = pd.to_numeric(df_conv['payment_received'], errors='coerce').fillna(0)
     df_conv['total_amount']     = pd.to_numeric(df_conv['total_amount'],     errors='coerce').fillna(0)
     df_conv['total_due']        = pd.to_numeric(df_conv['total_due'],        errors='coerce').fillna(0)
-    results['conv'] = df_conv
+    df_conv['total_gst']        = pd.to_numeric(df_conv['total_gst'],        errors='coerce').fillna(0)
+    df_conv['phone_clean']      = df_conv['phone'].astype(str).str.replace(r'\D','',regex=True).str[-10:]
+    df_conv['Payment Mode Label']= df_conv['payment_mode'].map(PAYMENT_MODE_MAP).fillna(df_conv['payment_mode'])
+    df_conv['service_name']     = df_conv['service_name'].astype(str).str.strip()
+    df_conv['sales_rep_name']   = df_conv['sales_rep_name'].astype(str).str.strip()
+    df_conv['trainer_clean']    = df_conv['trainer'].astype(str).str.split(' - ').str[-1].str.strip()
 
-    # ── Seminar Updated CSV ───────────────────────────────────────────────────
-    df_sem = pd.read_csv(io.BytesIO(sem_bytes))
-    df_sem['Is Attended ?']  = df_sem['Is Attended ?'].astype(str).str.strip().str.upper()
-    df_sem['Is Converted ?'] = df_sem['Is Converted ?'].astype(str).str.strip().str.upper()
-    df_sem['Amount Paid']    = pd.to_numeric(df_sem['Amount Paid'], errors='coerce').fillna(0)
-    df_sem['Session']        = df_sem['Session'].astype(str).str.strip().str.upper()
-    results['seminar'] = df_sem
+    # ── Merge on phone ────────────────────────────────────────────────────────
+    merged = attended.merge(
+        df_conv[['phone_clean','orderID','order_date','service_code','service_name',
+                 'payment_received','total_amount','total_due','total_gst',
+                 'payment_mode','Payment Mode Label','status',
+                 'sales_rep_name','trainer','trainer_clean','student_invid',
+                 'is_refunded','is_shortClosed','batch_date','coupon_code']],
+        left_on='mobile_clean', right_on='phone_clean', how='left'
+    )
 
-    # ── Offline Indepth ───────────────────────────────────────────────────────
-    xl = pd.ExcelFile(io.BytesIO(indepth_bytes))
-    dfs = []
-    for s in xl.sheet_names:
-        try:
-            df = pd.read_excel(io.BytesIO(indepth_bytes), sheet_name=s)
-            if 'student_name' in df.columns:
-                df['location'] = s
-                dfs.append(df)
-        except: pass
-    indepth = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-    for col in ['payment_received','total_amount','total_due','total_gst']:
-        indepth[col] = pd.to_numeric(indepth.get(col, 0), errors='coerce').fillna(0)
-    results['indepth'] = indepth
+    # ── Payment due status label ──────────────────────────────────────────────
+    def due_label(row):
+        if pd.isna(row.get('total_due')): return 'No Order'
+        if row['total_due'] <= 0:         return 'Fully Paid'
+        if row['total_due'] > 0 and row['total_amount'] > 0:
+            pct = row['total_due'] / row['total_amount']
+            return 'Partially Paid' if pct < 1 else 'Fully Due'
+        return 'No Order'
+    merged['Due Status'] = merged.apply(due_label, axis=1)
 
-    # ── Seminar Report ────────────────────────────────────────────────────────
-    df_rep = pd.read_excel(io.BytesIO(report_bytes), sheet_name='Offline Report', header=1)
-    df_rep = df_rep.dropna(subset=['Sr No']).copy()
-    for col in ['Total\nAttended','Actual Expenses','Expected Revenue',
-                'Actual Revenue(W/O GST)\nAttendees','Total Revenue\n(W/O GST)\nAttendees',
-                'Surplus or Deficit','Targeted\n','Total\nSeat\nBooked\n(in Seminar)',
-                'Targeted to Attended (%)']:
-        df_rep[col] = pd.to_numeric(df_rep[col], errors='coerce').fillna(0)
-    results['report'] = df_rep
-
-    return results
+    return merged
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HEADER
@@ -116,514 +138,476 @@ def process_all(conv_bytes, sem_bytes, indepth_bytes, report_bytes):
 st.markdown(f"""
 <div class="dash-header">
   <div>
-    <div class="dash-title">📊 Seminar Intelligence Dashboard</div>
-    <div class="dash-sub">Conversion · Attendance · Revenue · Payment · {datetime.now().strftime("%d %B %Y")}</div>
+    <div class="dash-title">🎯 Seminar Attendee Intelligence Dashboard</div>
+    <div class="dash-sub">Attendance · Conversion · Payment · Course · Sales Rep · Trainer · {datetime.now().strftime("%d %b %Y")}</div>
   </div>
-  <div class="live-pill">LIVE OVERVIEW</div>
+  <div class="live-pill">SEMINAR FOCUSED</div>
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab_upload, tab_overview, tab_seminar, tab_conversion, tab_revenue, tab_students = st.tabs([
-    "📁 Upload Files",
-    "🏠 Overview",
-    "🎯 Seminar Analytics",
-    "💰 Conversion Insights",
-    "📈 Revenue & Finance",
-    "👥 Student Payment Manager"
-])
+tab_upload, tab_dash, tab_detail = st.tabs(["📁  Upload Files", "📊  Dashboard & Analytics", "📋  Detailed Records"])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 — UPLOAD
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_upload:
-    st.markdown('<div class="tab-head">Upload Your 4 Data Files</div>', unsafe_allow_html=True)
-    st.markdown('<div class="tab-sub">Upload all 4 files below. The dashboard will auto-process and populate all tabs.</div>', unsafe_allow_html=True)
+    st.markdown("#### Upload your 2 source files")
+    st.markdown("The dashboard merges them automatically on **phone number** to link seminar attendance with order/payment data.")
+    st.markdown("<hr style='border-color:rgba(255,255,255,0.07)'>", unsafe_allow_html=True)
 
-    u1, u2 = st.columns(2)
-    u3, u4 = st.columns(2)
-
-    with u1:
-        st.markdown("**📋 Conversion List** (`.xlsx`)")
-        f_conv = st.file_uploader("Conversion List", type=["xlsx","xls"], key="f_conv", label_visibility="collapsed")
-    with u2:
+    uc1, uc2 = st.columns(2)
+    with uc1:
         st.markdown("**📝 Seminar Updated Sheet** (`.csv`)")
-        f_sem  = st.file_uploader("Seminar CSV", type=["csv"], key="f_sem", label_visibility="collapsed")
-    with u3:
-        st.markdown("**📂 Offline Indepth Attendees** (`.xlsx`)")
-        f_ind  = st.file_uploader("Indepth Attendees", type=["xlsx","xls"], key="f_ind", label_visibility="collapsed")
-    with u4:
-        st.markdown("**📊 Offline Seminar Report** (`.xlsx`)")
-        f_rep  = st.file_uploader("Seminar Report", type=["xlsx","xls"], key="f_rep", label_visibility="collapsed")
+        st.caption("Contains: Name, Mobile, Place, Trainer, Seminar Date, Session, Attended, Converted, Amount Paid")
+        f_sem = st.file_uploader("Seminar CSV", type=["csv"], key="up_sem", label_visibility="collapsed")
+    with uc2:
+        st.markdown("**📋 Conversion List** (`.xlsx`)")
+        st.caption("Contains: Order details, Course, Payment, Due, Status, Sales Rep, Trainer")
+        f_conv = st.file_uploader("Conversion XLSX", type=["xlsx","xls"], key="up_conv", label_visibility="collapsed")
 
-    all_uploaded = all([f_conv, f_sem, f_ind, f_rep])
+    if f_sem and f_conv:
+        with st.spinner("Merging and processing data…"):
+            df = load_and_merge(f_sem.read(), f_conv.read())
+        st.session_state.master = df
+        st.session_state.loaded = True
 
-    if all_uploaded:
-        with st.spinner("Processing all files…"):
-            data = process_all(
-                f_conv.read(), f_sem.read(), f_ind.read(), f_rep.read()
-            )
-        st.session_state.conv    = data['conv']
-        st.session_state.seminar = data['seminar']
-        st.session_state.indepth = data['indepth']
-        st.session_state.report  = data['report']
-        st.session_state.loaded  = True
-        st.success("✅ All 4 files loaded! Navigate to any tab to explore your dashboard.")
+        total  = len(df)
+        matched= df['orderID'].notna().sum()
+        conv   = (df['Conversion Status'] == 'Converted').sum()
+        st.success(f"✅ Done! **{total:,}** attendees loaded · **{matched:,}** matched to orders · **{conv:,}** converted")
 
         c1,c2,c3,c4 = st.columns(4)
-        c1.metric("Conversion records", f"{len(data['conv']):,}")
-        c2.metric("Seminar records",     f"{len(data['seminar']):,}")
-        c3.metric("Attendee records",    f"{len(data['indepth']):,}")
-        c4.metric("Seminar venues",      f"{len(data['report']):,}")
+        c1.metric("Total Attended",    f"{total:,}")
+        c2.metric("Matched to Orders", f"{matched:,}", f"{matched/total*100:.1f}%")
+        c3.metric("Converted",         f"{conv:,}",    f"{conv/total*100:.1f}%")
+        c4.metric("Seminar Locations", str(df['Place'].nunique()))
+    elif f_sem or f_conv:
+        st.info("⏳ Please upload both files to proceed.")
     else:
-        missing = []
-        if not f_conv: missing.append("Conversion List")
-        if not f_sem:  missing.append("Seminar Updated CSV")
-        if not f_ind:  missing.append("Offline Indepth Attendees")
-        if not f_rep:  missing.append("Seminar Report")
-        st.info(f"⏳ Waiting for: **{', '.join(missing)}**")
-
-# ── Guard — show placeholder if not loaded ────────────────────────────────────
-def not_loaded_msg():
-    st.warning("⚠️ Please upload all 4 files in the **Upload Files** tab first.")
+        st.markdown("""
+        <div style="background:#161922;border:1.5px dashed rgba(79,142,247,0.3);border-radius:12px;padding:2rem;text-align:center;">
+          <div style="font-size:15px;font-weight:500;color:#f0f2f7;margin-bottom:6px;">📂 No files uploaded yet</div>
+          <div style="font-size:13px;color:#6b7280;">Upload both files above to unlock the full dashboard</div>
+        </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — OVERVIEW
+# TAB 2 — DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
-with tab_overview:
+with tab_dash:
     if not st.session_state.loaded:
-        not_loaded_msg()
+        st.warning("⚠️ Upload both files in the **Upload Files** tab first.")
     else:
-        df_conv = st.session_state.conv
-        df_sem  = st.session_state.seminar
-        indepth = st.session_state.indepth
-        df_rep  = st.session_state.report
+        df_all = st.session_state.master.copy()
 
-        # Derived KPIs
-        attended     = df_sem[df_sem['Is Attended ?'] == 'YES']
-        converted_s  = attended[attended['Is Converted ?'].isin(['CONVERTED','YES'])]
-        conv_rate    = len(converted_s)/len(attended)*100 if len(attended) else 0
-        total_rev    = df_conv['total_amount'].sum()
-        total_due    = df_conv['total_due'].sum()
-        total_rcvd   = df_conv['payment_received'].sum()
-        active_stu   = (indepth['status'] == 'Active').sum()
-        total_venues = len(df_rep)
-        total_exp    = df_rep['Actual Expenses'].sum()
-        total_surplus= df_rep['Surplus or Deficit'].sum()
-        roi_pct      = total_surplus/total_exp*100 if total_exp else 0
-        avg_attend   = df_rep['Targeted to Attended (%)'].mean()*100
+        # ══════════════════════════════════════════════════════════════════════
+        # FILTER BAR
+        # ══════════════════════════════════════════════════════════════════════
+        with st.expander("🔽  Filters — click to expand / collapse", expanded=True):
+            fa, fb, fc, fd = st.columns(4)
+            fe, ff, fg, fh = st.columns(4)
 
-        st.markdown("##### Top-line KPIs")
-        r1 = st.columns(4)
-        r2 = st.columns(4)
+            all_places   = sorted(df_all['Place'].dropna().unique())
+            all_trainers = sorted(df_all['Trainer / Presenter'].dropna().unique())
+            all_dates    = sorted(df_all['Seminar Date'].dropna().unique())
+            all_sessions = ["MORNING","EVENING"]
+            all_conv     = ["Converted","Not Converted"]
+            all_due      = sorted(df_all['Due Status'].dropna().unique())
+            all_courses  = sorted(df_all['service_name'].dropna().unique())
+            all_reps     = sorted(df_all['sales_rep_name'].dropna().unique())
+            all_status   = sorted(df_all['status'].dropna().unique())
 
-        with r1[0]: st.markdown(kpi_card("Total Conversions",    f"{len(df_conv):,}",           "All-time records",                "neu"), unsafe_allow_html=True)
-        with r1[1]: st.markdown(kpi_card("Seminar Attendees",    f"{len(attended):,}",           f"{len(df_sem):,} total registered","neu"), unsafe_allow_html=True)
-        with r1[2]: st.markdown(kpi_card("Conversion Rate",      f"{conv_rate:.1f}%",            f"{len(converted_s):,} converted",  "up" if conv_rate>15 else "warn"), unsafe_allow_html=True)
-        with r1[3]: st.markdown(kpi_card("Total Revenue",        fmt_cr(total_rev),              "Gross order value",               "up"), unsafe_allow_html=True)
-        with r2[0]: st.markdown(kpi_card("Payment Received",     fmt_cr(total_rcvd),             f"Due: {fmt_cr(total_due)}",        "up"), unsafe_allow_html=True)
-        with r2[1]: st.markdown(kpi_card("Active Students",      f"{active_stu:,}",              f"Offline batch enrolled",         "up"), unsafe_allow_html=True)
-        with r2[2]: st.markdown(kpi_card("Venues Covered",       f"{total_venues}",              "Offline seminar locations",       "neu"), unsafe_allow_html=True)
-        with r2[3]: st.markdown(kpi_card("Seminar ROI",          f"{roi_pct:.1f}%",              f"Surplus {fmt_cr(total_surplus)}", "up" if roi_pct>50 else "warn"), unsafe_allow_html=True)
+            sel_place    = fa.multiselect("📍 Location",         all_places,   key="f_place")
+            sel_trainer  = fb.multiselect("🎤 Trainer",          all_trainers, key="f_trainer")
+            sel_date     = fc.multiselect("📅 Seminar Date",     [d.strftime("%d %b %Y") if pd.notna(d) else "" for d in all_dates], key="f_date")
+            sel_session  = fd.multiselect("🕐 Session",          all_sessions, key="f_session")
+            sel_conv     = fe.multiselect("✅ Conversion Status", all_conv,    key="f_conv")
+            sel_due      = ff.multiselect("💳 Due Status",        all_due,     key="f_due")
+            sel_course   = fg.multiselect("📚 Course",            all_courses, key="f_course")
+            sel_rep      = fh.multiselect("👤 Sales Rep",         all_reps,    key="f_rep")
+
+            fr1, fr2, fr3 = st.columns(3)
+            sel_status   = fr1.multiselect("📌 Order Status", all_status, key="f_status")
+            is_trader    = fr2.selectbox("🔄 Is Trader?",   ["All","Yes","No"], key="f_trader")
+            is_our_stu   = fr3.selectbox("🎓 Existing Student?", ["All","Yes","No"], key="f_ourstu")
+
+        # ── Apply filters ─────────────────────────────────────────────────────
+        df = df_all.copy()
+        if sel_place:    df = df[df['Place'].isin(sel_place)]
+        if sel_trainer:  df = df[df['Trainer / Presenter'].isin(sel_trainer)]
+        if sel_date:
+            fmt_dates = [pd.to_datetime(d, format="%d %b %Y") for d in sel_date]
+            df = df[df['Seminar Date'].isin(fmt_dates)]
+        if sel_session:  df = df[df['Session'].isin(sel_session)]
+        if sel_conv:     df = df[df['Conversion Status'].isin(sel_conv)]
+        if sel_due:      df = df[df['Due Status'].isin(sel_due)]
+        if sel_course:   df = df[df['service_name'].isin(sel_course)]
+        if sel_rep:      df = df[df['sales_rep_name'].isin(sel_rep)]
+        if sel_status:   df = df[df['status'].isin(sel_status)]
+        if is_trader != "All":
+            df = df[df['TRADER'].str.upper().isin(['YES'] if is_trader=="Yes" else ['NO'])]
+        if is_our_stu != "All":
+            df = df[df['Is our Student ?'].str.upper().isin(['YES','STUDENT'] if is_our_stu=="Yes" else ['NO'])]
+
+        total_f  = len(df)
+        conv_f   = (df['Conversion Status']=='Converted').sum()
+        nconv_f  = total_f - conv_f
+        conv_r   = conv_f/total_f*100 if total_f else 0
+        matched_f= df['orderID'].notna().sum()
+        amt_coll = df['payment_received'].sum()
+        amt_due  = df['total_due'].sum()
+        amt_tot  = df['total_amount'].sum()
+        fully_paid = (df['Due Status']=='Fully Paid').sum()
+        has_due    = (df['Due Status'].isin(['Partially Paid','Fully Due'])).sum()
+
+        # ── KPI Row ───────────────────────────────────────────────────────────
+        st.markdown("##### Summary KPIs — filtered view")
+        k1,k2,k3,k4,k5,k6 = st.columns(6)
+        with k1: st.markdown(kpi("Total Attended", f"{total_f:,}", f"{len(df_all):,} total", "blue"), unsafe_allow_html=True)
+        with k2: st.markdown(kpi("Converted", f"{conv_f:,}", f"{conv_r:.1f}% rate", "up" if conv_r>15 else "warn"), unsafe_allow_html=True)
+        with k3: st.markdown(kpi("Not Converted", f"{nconv_f:,}", f"{100-conv_r:.1f}% of attended", "down"), unsafe_allow_html=True)
+        with k4: st.markdown(kpi("Course Revenue", fmt_inr(amt_tot), "Gross order value", "up"), unsafe_allow_html=True)
+        with k5: st.markdown(kpi("Collected", fmt_inr(amt_coll), f"Due: {fmt_inr(amt_due)}", "up"), unsafe_allow_html=True)
+        with k6: st.markdown(kpi("Fully Paid", f"{fully_paid:,}", f"Has due: {has_due:,}", "up" if fully_paid > has_due else "warn"), unsafe_allow_html=True)
 
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
 
-        # Row: Monthly conversions + Conversion funnel
-        oc1, oc2 = st.columns([3, 2])
-        with oc1:
-            st.markdown('<div class="section-head">Monthly conversion volume & revenue</div>', unsafe_allow_html=True)
-            mo = df_conv.groupby('month').agg(count=('_id','count'), revenue=('total_amount','sum')).reset_index().tail(6)
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
-            fig.add_trace(go.Bar(x=mo['month'], y=mo['count'], name="Orders",
-                                 marker_color=BLUE, marker_line_width=0, opacity=0.85), secondary_y=False)
-            fig.add_trace(go.Scatter(x=mo['month'], y=mo['revenue'], name="Revenue",
-                                     line=dict(color=GRN, width=2.5), mode="lines+markers",
-                                     marker=dict(size=7, color=GRN)), secondary_y=True)
-            fig.update_layout(**CHART_LAYOUT, height=250, bargap=0.3, legend=dict(orientation="h",x=0,y=1.15,font=dict(size=11)))
-            fig.update_yaxes(gridcolor=GRID, secondary_y=False)
-            fig.update_yaxes(gridcolor=GRID, tickformat=",.0f", secondary_y=True)
-            fig.update_xaxes(showgrid=False)
+        # ── Row 1: Conversion by Location + Session ───────────────────────────
+        r1c1, r1c2 = st.columns([3,2])
+
+        with r1c1:
+            st.markdown('<div class="section-head">Conversion rate by location</div>', unsafe_allow_html=True)
+            loc_grp = df.groupby('Place').agg(
+                Attended=('NAME','count'),
+                Converted=('Conversion Status', lambda x: (x=='Converted').sum())
+            ).reset_index()
+            loc_grp['Rate'] = (loc_grp['Converted']/loc_grp['Attended']*100).round(1)
+            loc_grp = loc_grp.sort_values('Attended', ascending=True)
+            fig = go.Figure()
+            fig.add_trace(go.Bar(name='Attended',  y=loc_grp['Place'], x=loc_grp['Attended'],
+                                 orientation='h', marker_color=BLUE, opacity=0.7, marker_line_width=0))
+            fig.add_trace(go.Bar(name='Converted', y=loc_grp['Place'], x=loc_grp['Converted'],
+                                 orientation='h', marker_color=GRN, marker_line_width=0))
+            fig.update_layout(**BASE_LAYOUT, height=max(280, len(loc_grp)*38),
+                barmode='overlay', bargap=0.3,
+                legend=dict(orientation="h",x=0,y=1.08,font=dict(size=11)),
+                xaxis=dict(showgrid=False), yaxis=dict(showgrid=False))
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
 
-        with oc2:
-            st.markdown('<div class="section-head">Seminar conversion funnel</div>', unsafe_allow_html=True)
-            funnel_vals = [len(df_sem), len(attended), len(converted_s)]
-            funnel_labs = ["Registered", "Attended", "Converted"]
+        with r1c2:
+            st.markdown('<div class="section-head">Conversion funnel</div>', unsafe_allow_html=True)
             fig2 = go.Figure(go.Funnel(
-                y=funnel_labs, x=funnel_vals,
+                y=["Registered", "Attended", "Converted"],
+                x=[len(df_all), total_f, conv_f],
                 textinfo="value+percent initial",
                 marker=dict(color=[BLUE, PURP, GRN]),
                 connector=dict(line=dict(color=BG, width=3)),
             ))
-            fig2.update_layout(**CHART_LAYOUT, height=250)
+            fig2.update_layout(**BASE_LAYOUT, height=200)
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar":False})
 
-        # Row: Status breakdown + Top trainers
-        oc3, oc4 = st.columns(2)
-        with oc3:
-            st.markdown('<div class="section-head">Order status breakdown</div>', unsafe_allow_html=True)
-            status_counts = df_conv['status'].value_counts()
-            fig3 = go.Figure(go.Pie(
-                labels=status_counts.index, values=status_counts.values, hole=0.62,
-                marker=dict(colors=[GRN, RED, AMB, GRAY], line=dict(color=BG, width=2)),
-                textfont=dict(size=12),
+            st.markdown('<div class="section-head" style="margin-top:12px">Session split</div>', unsafe_allow_html=True)
+            sess = df.groupby('Session').agg(
+                Attended=('NAME','count'),
+                Converted=('Conversion Status', lambda x: (x=='Converted').sum())
+            ).reset_index()
+            fig3 = go.Figure()
+            fig3.add_trace(go.Bar(name='Attended',  x=sess['Session'], y=sess['Attended'],
+                                  marker_color=BLUE, opacity=0.7, marker_line_width=0))
+            fig3.add_trace(go.Bar(name='Converted', x=sess['Session'], y=sess['Converted'],
+                                  marker_color=GRN, marker_line_width=0))
+            fig3.update_layout(**BASE_LAYOUT, height=180, barmode='group', bargap=0.35,
+                legend=dict(orientation="h",x=0,y=1.12,font=dict(size=11)),
+                xaxis=dict(showgrid=False), yaxis=dict(gridcolor=GRID))
+            st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
+
+        # ── Row 2: Date trend + Due status ────────────────────────────────────
+        r2c1, r2c2 = st.columns([3,2])
+
+        with r2c1:
+            st.markdown('<div class="section-head">Attendance & conversion by seminar date</div>', unsafe_allow_html=True)
+            date_grp = df.groupby('Seminar Date').agg(
+                Attended=('NAME','count'),
+                Converted=('Conversion Status', lambda x: (x=='Converted').sum())
+            ).reset_index().dropna(subset=['Seminar Date']).sort_values('Seminar Date')
+            date_grp['Label'] = date_grp['Seminar Date'].dt.strftime("%d %b")
+            fig4 = go.Figure()
+            fig4.add_trace(go.Bar(name='Attended',  x=date_grp['Label'], y=date_grp['Attended'],
+                                  marker_color=BLUE, opacity=0.7, marker_line_width=0))
+            fig4.add_trace(go.Scatter(name='Converted', x=date_grp['Label'], y=date_grp['Converted'],
+                                      line=dict(color=GRN,width=2.5), mode='lines+markers',
+                                      marker=dict(size=7,color=GRN,line=dict(color=BG,width=2)),
+                                      yaxis='y2'))
+            fig4.update_layout(**BASE_LAYOUT, height=240,
+                bargap=0.3,
+                legend=dict(orientation="h",x=0,y=1.1,font=dict(size=11)),
+                xaxis=dict(showgrid=False),
+                yaxis=dict(gridcolor=GRID, title="Attended"),
+                yaxis2=dict(overlaying='y', side='right', showgrid=False, title="Converted"))
+            st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar":False})
+
+        with r2c2:
+            st.markdown('<div class="section-head">Payment due status</div>', unsafe_allow_html=True)
+            due_counts = df['Due Status'].value_counts()
+            color_map = {'Fully Paid':GRN, 'Partially Paid':AMB, 'Fully Due':RED, 'No Order':GRAY}
+            fig5 = go.Figure(go.Pie(
+                labels=due_counts.index, values=due_counts.values, hole=0.62,
+                marker=dict(colors=[color_map.get(l,BLUE) for l in due_counts.index],
+                            line=dict(color=BG,width=2)),
+                textfont=dict(size=11),
                 hovertemplate="%{label}: %{value}<extra></extra>",
             ))
-            fig3.update_layout(**CHART_LAYOUT, height=230,
-                legend=dict(orientation="h", x=0.5, xanchor="center", y=-0.15, font=dict(size=11)),
-                annotations=[dict(text="Status", x=0.5, y=0.5, showarrow=False, font=dict(size=12, color=TEXT))])
-            st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
+            fig5.update_layout(**BASE_LAYOUT, height=240,
+                legend=dict(orientation="h",x=0.5,xanchor="center",y=-0.2,font=dict(size=11)),
+                annotations=[dict(text="Due<br>Status",x=0.5,y=0.5,showarrow=False,
+                                  font=dict(size=11,color=TEXT))])
+            st.plotly_chart(fig5, use_container_width=True, config={"displayModeBar":False})
 
-        with oc4:
-            st.markdown('<div class="section-head">Top 8 trainers by conversions</div>', unsafe_allow_html=True)
-            top_tr = df_conv['trainer'].value_counts().dropna().head(8)
-            top_tr_names = [str(x).split(' - ')[-1] if ' - ' in str(x) else str(x) for x in top_tr.index]
-            fig4 = go.Figure(go.Bar(
-                x=top_tr.values, y=top_tr_names, orientation='h',
+        # ── Row 3: Course + Sales Rep ─────────────────────────────────────────
+        r3c1, r3c2 = st.columns(2)
+
+        with r3c1:
+            st.markdown('<div class="section-head">Top courses by converted students</div>', unsafe_allow_html=True)
+            course_df = df[df['Conversion Status']=='Converted'].groupby('service_name').agg(
+                Count=('NAME','count'), Revenue=('total_amount','sum')
+            ).reset_index().sort_values('Count', ascending=True).tail(10)
+            course_df['Short'] = course_df['service_name'].apply(lambda x: x[:32]+'…' if len(x)>32 else x)
+            fig6 = go.Figure(go.Bar(
+                x=course_df['Count'], y=course_df['Short'], orientation='h',
                 marker_color=PURP, marker_line_width=0,
-                text=top_tr.values, textposition='outside', textfont=dict(size=11, color=TEXT),
+                text=course_df['Count'], textposition='outside', textfont=dict(size=11, color=TEXT),
             ))
-            fig4.update_layout(**CHART_LAYOUT, height=230,
-                xaxis=dict(showgrid=False, showticklabels=False), yaxis=dict(showgrid=False), bargap=0.35)
-            st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar":False})
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — SEMINAR ANALYTICS
-# ══════════════════════════════════════════════════════════════════════════════
-with tab_seminar:
-    if not st.session_state.loaded:
-        not_loaded_msg()
-    else:
-        df_sem  = st.session_state.seminar
-        df_rep  = st.session_state.report
-        attended = df_sem[df_sem['Is Attended ?'] == 'YES']
-        converted_s = attended[attended['Is Converted ?'].isin(['CONVERTED','YES'])]
-
-        st.markdown("##### Seminar Performance KPIs")
-        sr1 = st.columns(4)
-        with sr1[0]: st.markdown(kpi_card("Total Venues", f"{len(df_rep)}", "Offline seminar locations", "neu"), unsafe_allow_html=True)
-        with sr1[1]: st.markdown(kpi_card("Total Attended", f"{int(df_rep['Total\nAttended'].sum()):,}", "Across all venues", "up"), unsafe_allow_html=True)
-        with sr1[2]:
-            avg_rate = df_rep['Targeted to Attended (%)'].mean()*100
-            st.markdown(kpi_card("Avg Attendance Rate", f"{avg_rate:.1f}%", "Target vs actual", "up" if avg_rate>30 else "warn"), unsafe_allow_html=True)
-        with sr1[3]:
-            seats = int(df_rep['Total\nSeat\nBooked\n(in Seminar)'].sum())
-            st.markdown(kpi_card("Seats Booked", f"{seats:,}", "Via seminar/webinar", "neu"), unsafe_allow_html=True)
-
-        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-
-        sc1, sc2 = st.columns(2)
-        with sc1:
-            st.markdown('<div class="section-head">Top locations by attendance</div>', unsafe_allow_html=True)
-            top_loc = df_rep.nlargest(10, 'Total\nAttended')[['Location','Total\nAttended']].copy()
-            fig = go.Figure(go.Bar(
-                x=top_loc['Total\nAttended'], y=top_loc['Location'], orientation='h',
-                marker_color=BLUE, marker_line_width=0,
-                text=top_loc['Total\nAttended'].astype(int), textposition='outside', textfont=dict(size=11,color=TEXT),
-            ))
-            fig.update_layout(**CHART_LAYOUT, height=320,
+            fig6.update_layout(**BASE_LAYOUT, height=280,
                 xaxis=dict(showgrid=False,showticklabels=False), yaxis=dict(showgrid=False), bargap=0.3)
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
+            st.plotly_chart(fig6, use_container_width=True, config={"displayModeBar":False})
 
-        with sc2:
-            st.markdown('<div class="section-head">Morning vs Evening conversion split</div>', unsafe_allow_html=True)
-            sess_conv = attended.copy()
-            sess_conv['Converted'] = sess_conv['Is Converted ?'].isin(['CONVERTED','YES'])
-            sess_grp = sess_conv.groupby('Session').agg(Attended=('Converted','count'), Converted=('Converted','sum')).reset_index()
-            sess_grp = sess_grp[sess_grp['Session'].isin(['MORNING','EVENING'])]
-            fig2 = go.Figure()
-            fig2.add_trace(go.Bar(name='Attended',  x=sess_grp['Session'], y=sess_grp['Attended'],
-                                  marker_color=BLUE, opacity=0.7))
-            fig2.add_trace(go.Bar(name='Converted', x=sess_grp['Session'], y=sess_grp['Converted'],
-                                  marker_color=GRN))
-            fig2.update_layout(**CHART_LAYOUT, height=320, barmode='group', bargap=0.35,
-                legend=dict(orientation="h", x=0, y=1.12, font=dict(size=11)),
-                xaxis=dict(showgrid=False), yaxis=dict(gridcolor=GRID))
-            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar":False})
+        with r3c2:
+            st.markdown('<div class="section-head">Sales rep performance (conversions)</div>', unsafe_allow_html=True)
+            rep_df = df[df['Conversion Status']=='Converted'].groupby('sales_rep_name').agg(
+                Converted=('NAME','count'),
+                Revenue=('total_amount','sum'),
+                Due=('total_due','sum')
+            ).reset_index().sort_values('Converted', ascending=True).tail(10)
+            fig7 = go.Figure()
+            fig7.add_trace(go.Bar(name='Conversions', y=rep_df['sales_rep_name'], x=rep_df['Converted'],
+                                  orientation='h', marker_color=TEAL, marker_line_width=0,
+                                  text=rep_df['Converted'], textposition='outside', textfont=dict(size=11,color=TEXT)))
+            fig7.update_layout(**BASE_LAYOUT, height=280,
+                xaxis=dict(showgrid=False,showticklabels=False), yaxis=dict(showgrid=False),
+                bargap=0.3, showlegend=False)
+            st.plotly_chart(fig7, use_container_width=True, config={"displayModeBar":False})
 
-        sc3, sc4 = st.columns(2)
-        with sc3:
-            st.markdown('<div class="section-head">Top locations by seminar conversion (CSV)</div>', unsafe_allow_html=True)
-            loc_conv = converted_s['Place'].value_counts().head(10)
-            fig3 = go.Figure(go.Bar(
-                x=loc_conv.values, y=loc_conv.index, orientation='h',
-                marker_color=GRN, marker_line_width=0,
-                text=loc_conv.values, textposition='outside', textfont=dict(size=11, color=TEXT),
-            ))
-            fig3.update_layout(**CHART_LAYOUT, height=300,
-                xaxis=dict(showgrid=False, showticklabels=False), yaxis=dict(showgrid=False), bargap=0.3)
-            st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
+        # ── Row 4: Trainer + Payment mode ─────────────────────────────────────
+        r4c1, r4c2 = st.columns(2)
 
-        with sc4:
-            st.markdown('<div class="section-head">Expense vs Revenue by location (top 10)</div>', unsafe_allow_html=True)
-            top10 = df_rep.nlargest(10, 'Actual Revenue(W/O GST)\nAttendees')
-            fig4 = go.Figure()
-            fig4.add_trace(go.Bar(name='Expenses', x=top10['Location'], y=top10['Actual Expenses'],
-                                  marker_color=RED, opacity=0.8))
-            fig4.add_trace(go.Bar(name='Revenue',  x=top10['Location'], y=top10['Actual Revenue(W/O GST)\nAttendees'],
-                                  marker_color=GRN, opacity=0.8))
-            fig4.update_layout(**CHART_LAYOUT, height=300, barmode='group', bargap=0.25,
-                legend=dict(orientation="h", x=0, y=1.12, font=dict(size=11)),
-                xaxis=dict(showgrid=False, tickangle=-35), yaxis=dict(gridcolor=GRID))
-            st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar":False})
+        with r4c1:
+            st.markdown('<div class="section-head">Trainer wise attendance & conversion</div>', unsafe_allow_html=True)
+            tr_df = df.groupby('Trainer / Presenter').agg(
+                Attended=('NAME','count'),
+                Converted=('Conversion Status', lambda x: (x=='Converted').sum())
+            ).reset_index()
+            tr_df['Rate'] = (tr_df['Converted']/tr_df['Attended']*100).round(1)
+            tr_df = tr_df.sort_values('Attended', ascending=True)
+            tr_df['Short'] = tr_df['Trainer / Presenter'].apply(lambda x: x[:30]+'…' if len(x)>30 else x)
+            fig8 = go.Figure()
+            fig8.add_trace(go.Bar(name='Attended',  y=tr_df['Short'], x=tr_df['Attended'],
+                                  orientation='h', marker_color=BLUE, opacity=0.6, marker_line_width=0))
+            fig8.add_trace(go.Bar(name='Converted', y=tr_df['Short'], x=tr_df['Converted'],
+                                  orientation='h', marker_color=GRN, marker_line_width=0))
+            fig8.update_layout(**BASE_LAYOUT, height=300,
+                barmode='overlay', bargap=0.3,
+                legend=dict(orientation="h",x=0,y=1.08,font=dict(size=11)),
+                xaxis=dict(showgrid=False), yaxis=dict(showgrid=False))
+            st.plotly_chart(fig8, use_container_width=True, config={"displayModeBar":False})
 
-        st.markdown('<div class="section-head" style="margin-top:8px">Full seminar report</div>', unsafe_allow_html=True)
-        st.dataframe(df_rep[['Location','Seminar Date','Total\nAttended','Actual Expenses',
-                               'Expected Revenue','Actual Revenue(W/O GST)\nAttendees',
-                               'Surplus or Deficit','Targeted to Attended (%)']].rename(columns={
-            'Total\nAttended':'Attended','Actual Revenue(W/O GST)\nAttendees':'Actual Rev',
-            'Targeted to Attended (%)':'Attend Rate'}),
-            use_container_width=True, height=280)
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 4 — CONVERSION INSIGHTS
-# ══════════════════════════════════════════════════════════════════════════════
-with tab_conversion:
-    if not st.session_state.loaded:
-        not_loaded_msg()
-    else:
-        df_conv = st.session_state.conv
-        df_sem  = st.session_state.seminar
-
-        st.markdown("##### Conversion KPIs")
-        attended    = df_sem[df_sem['Is Attended ?'] == 'YES']
-        converted_s = attended[attended['Is Converted ?'].isin(['CONVERTED','YES'])]
-        sem_conv_r  = len(converted_s)/len(attended)*100 if len(attended) else 0
-
-        cr1 = st.columns(4)
-        active_orders  = (df_conv['status'] == 'Active').sum()
-        inactive_orders= (df_conv['status'] == 'Inactive').sum()
-        closed_orders  = (df_conv['status'] == 'Closed').sum()
-        with cr1[0]: st.markdown(kpi_card("Total Orders",    f"{len(df_conv):,}",    "All time",            "neu"), unsafe_allow_html=True)
-        with cr1[1]: st.markdown(kpi_card("Active Orders",   f"{active_orders:,}",   f"Inactive: {inactive_orders:,}", "up"), unsafe_allow_html=True)
-        with cr1[2]: st.markdown(kpi_card("Seminar Conv Rate",f"{sem_conv_r:.1f}%",  f"{len(converted_s):,} of {len(attended):,}", "up" if sem_conv_r>15 else "warn"), unsafe_allow_html=True)
-        with cr1[3]: st.markdown(kpi_card("Avg Order Value", f"₹{df_conv[df_conv['total_amount']>0]['total_amount'].mean():,.0f}", "Non-zero orders", "up"), unsafe_allow_html=True)
-
-        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-
-        cc1, cc2 = st.columns(2)
-        with cc1:
-            st.markdown('<div class="section-head">Payment mode distribution</div>', unsafe_allow_html=True)
-            pm = df_conv['payment_mode'].value_counts()
-            pm.index = pm.index.map(lambda x: str(x).replace('mode','Mode '))
-            fig = go.Figure(go.Pie(
-                labels=pm.index, values=pm.values, hole=0.58,
+        with r4c2:
+            st.markdown('<div class="section-head">Payment mode of converted students</div>', unsafe_allow_html=True)
+            pm_df = df[df['Conversion Status']=='Converted']['Payment Mode Label'].value_counts()
+            fig9 = go.Figure(go.Pie(
+                labels=pm_df.index, values=pm_df.values, hole=0.58,
                 marker=dict(colors=[BLUE,PURP,GRN,AMB,RED,TEAL,GRAY], line=dict(color=BG,width=2)),
                 textfont=dict(size=11),
             ))
-            fig.update_layout(**CHART_LAYOUT, height=260,
-                legend=dict(orientation="h",x=0.5,xanchor="center",y=-0.18,font=dict(size=11)),
+            fig9.update_layout(**BASE_LAYOUT, height=300,
+                legend=dict(orientation="v",x=1.02,y=0.5,font=dict(size=11)),
                 annotations=[dict(text="Mode",x=0.5,y=0.5,showarrow=False,font=dict(size=12,color=TEXT))])
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
+            st.plotly_chart(fig9, use_container_width=True, config={"displayModeBar":False})
 
-        with cc2:
-            st.markdown('<div class="section-head">Top 8 sales reps by conversions</div>', unsafe_allow_html=True)
-            top_sr = df_conv['sales_rep_name'].value_counts().dropna().head(8)
-            fig2 = go.Figure(go.Bar(
-                x=top_sr.values, y=top_sr.index, orientation='h',
-                marker_color=TEAL, marker_line_width=0,
-                text=top_sr.values, textposition='outside', textfont=dict(size=11, color=TEXT),
+        # ── Row 5: Revenue by location + Trader mix ───────────────────────────
+        r5c1, r5c2 = st.columns([3,2])
+
+        with r5c1:
+            st.markdown('<div class="section-head">Revenue collected vs due by location</div>', unsafe_allow_html=True)
+            rev_loc = df.groupby('Place').agg(
+                Collected=('payment_received','sum'), Due=('total_due','sum')
+            ).reset_index().sort_values('Collected', ascending=True)
+            fig10 = go.Figure()
+            fig10.add_trace(go.Bar(name='Collected', y=rev_loc['Place'], x=rev_loc['Collected'],
+                                   orientation='h', marker_color=GRN, opacity=0.8, marker_line_width=0))
+            fig10.add_trace(go.Bar(name='Due',       y=rev_loc['Place'], x=rev_loc['Due'],
+                                   orientation='h', marker_color=RED, opacity=0.8, marker_line_width=0))
+            fig10.update_layout(**BASE_LAYOUT, height=max(280, len(rev_loc)*38),
+                barmode='stack', bargap=0.3,
+                legend=dict(orientation="h",x=0,y=1.08,font=dict(size=11)),
+                xaxis=dict(gridcolor=GRID,tickformat=",.0f"), yaxis=dict(showgrid=False))
+            st.plotly_chart(fig10, use_container_width=True, config={"displayModeBar":False})
+
+        with r5c2:
+            st.markdown('<div class="section-head">Trader vs non-trader (attended)</div>', unsafe_allow_html=True)
+            trader_counts = df['TRADER'].map(
+                lambda x: 'Trader' if x in ['YES','Y','TYES'] else 'Non-Trader'
+            ).value_counts()
+            fig11 = go.Figure(go.Pie(
+                labels=trader_counts.index, values=trader_counts.values, hole=0.6,
+                marker=dict(colors=[TEAL, PURP], line=dict(color=BG,width=2)),
+                textfont=dict(size=12),
             ))
-            fig2.update_layout(**CHART_LAYOUT, height=260,
-                xaxis=dict(showgrid=False,showticklabels=False), yaxis=dict(showgrid=False), bargap=0.35)
-            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar":False})
+            fig11.update_layout(**BASE_LAYOUT, height=180,
+                legend=dict(orientation="h",x=0.5,xanchor="center",y=-0.2,font=dict(size=11)),
+                annotations=[dict(text="Mix",x=0.5,y=0.5,showarrow=False,font=dict(size=12,color=TEXT))])
+            st.plotly_chart(fig11, use_container_width=True, config={"displayModeBar":False})
 
-        cc3, cc4 = st.columns(2)
-        with cc3:
-            st.markdown('<div class="section-head">Top 8 courses by order volume</div>', unsafe_allow_html=True)
-            top_courses = df_conv['service_name'].value_counts().head(8)
-            short_names = [s[:35]+'…' if len(s)>35 else s for s in top_courses.index]
-            fig3 = go.Figure(go.Bar(
-                x=top_courses.values, y=short_names, orientation='h',
-                marker_color=AMB, marker_line_width=0,
-                text=top_courses.values, textposition='outside', textfont=dict(size=11, color=TEXT),
+            st.markdown('<div class="section-head" style="margin-top:10px">Existing student vs new</div>', unsafe_allow_html=True)
+            stu_counts = df['Is our Student ?'].map(
+                lambda x: 'Existing Student' if x in ['YES','STUDENT'] else 'New Lead'
+            ).value_counts()
+            fig12 = go.Figure(go.Pie(
+                labels=stu_counts.index, values=stu_counts.values, hole=0.6,
+                marker=dict(colors=[AMB, BLUE], line=dict(color=BG,width=2)),
+                textfont=dict(size=12),
             ))
-            fig3.update_layout(**CHART_LAYOUT, height=280,
-                xaxis=dict(showgrid=False,showticklabels=False), yaxis=dict(showgrid=False), bargap=0.3)
-            st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
-
-        with cc4:
-            st.markdown('<div class="section-head">Seminar amount paid distribution (converted)</div>', unsafe_allow_html=True)
-            amt_nonzero = converted_s[converted_s['Amount Paid']>0]['Amount Paid']
-            fig4 = go.Figure(go.Histogram(x=amt_nonzero, nbinsx=20,
-                marker_color=PURP, marker_line_width=0, opacity=0.85))
-            fig4.update_layout(**CHART_LAYOUT, height=280,
-                xaxis=dict(title="Amount Paid (₹)", showgrid=False),
-                yaxis=dict(gridcolor=GRID, title="Count"))
-            st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar":False})
-
-        st.markdown('<div class="section-head" style="margin-top:8px">Recent conversions</div>', unsafe_allow_html=True)
-        disp = df_conv[['order_date','student_name','service_name','total_amount','total_due','status','sales_rep_name']]\
-                .sort_values('order_date', ascending=False).head(50)
-        disp['total_amount'] = disp['total_amount'].apply(lambda x: f"₹{x:,.0f}")
-        disp['total_due']    = disp['total_due'].apply(lambda x: f"₹{x:,.0f}")
-        st.dataframe(disp, use_container_width=True, height=300, hide_index=True)
+            fig12.update_layout(**BASE_LAYOUT, height=180,
+                legend=dict(orientation="h",x=0.5,xanchor="center",y=-0.2,font=dict(size=11)),
+                annotations=[dict(text="Student",x=0.5,y=0.5,showarrow=False,font=dict(size=12,color=TEXT))])
+            st.plotly_chart(fig12, use_container_width=True, config={"displayModeBar":False})
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 5 — REVENUE & FINANCE
+# TAB 3 — DETAILED RECORDS
 # ══════════════════════════════════════════════════════════════════════════════
-with tab_revenue:
+with tab_detail:
     if not st.session_state.loaded:
-        not_loaded_msg()
+        st.warning("⚠️ Upload both files in the **Upload Files** tab first.")
     else:
-        df_conv = st.session_state.conv
-        df_rep  = st.session_state.report
-        indepth = st.session_state.indepth
+        df_all = st.session_state.master.copy()
 
-        total_rev    = df_conv['total_amount'].sum()
-        total_rcvd   = df_conv['payment_received'].sum()
-        total_due    = df_conv['total_due'].sum()
-        total_exp    = df_rep['Actual Expenses'].sum()
-        total_surplus= df_rep['Surplus or Deficit'].sum()
-        offline_rev  = indepth[~indepth['location'].str.upper().str.contains('CON')]['payment_received'].sum()
+        st.markdown("#### Attendee Records — Full Filterable Table")
+        st.markdown("Every seminar attendee with their payment, course, and sales details. Use filters below.")
 
-        st.markdown("##### Revenue KPIs")
-        rv1 = st.columns(4)
-        with rv1[0]: st.markdown(kpi_card("Gross Revenue",       fmt_cr(total_rev),           "Total order value",           "up"), unsafe_allow_html=True)
-        with rv1[1]: st.markdown(kpi_card("Payment Collected",   fmt_cr(total_rcvd),          f"Due: {fmt_cr(total_due)}",   "up"), unsafe_allow_html=True)
-        with rv1[2]: st.markdown(kpi_card("Offline Revenue",     fmt_cr(offline_rev),         "From indepth attendees",      "up"), unsafe_allow_html=True)
-        with rv1[3]: st.markdown(kpi_card("Seminar Surplus",     fmt_cr(total_surplus),       f"Expenses: {fmt_cr(total_exp)}", "up" if total_surplus>0 else "down"), unsafe_allow_html=True)
+        # ── Inline filters ────────────────────────────────────────────────────
+        tf1,tf2,tf3,tf4 = st.columns(4)
+        tf5,tf6,tf7,tf8 = st.columns(4)
 
-        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+        t_place    = tf1.multiselect("📍 Location",         sorted(df_all['Place'].dropna().unique()), key="t_place")
+        t_trainer  = tf2.multiselect("🎤 Trainer",          sorted(df_all['Trainer / Presenter'].dropna().unique()), key="t_trainer")
+        t_date     = tf3.multiselect("📅 Seminar Date",
+                                     [d.strftime("%d %b %Y") for d in sorted(df_all['Seminar Date'].dropna().unique())], key="t_date")
+        t_session  = tf4.multiselect("🕐 Session",          ["MORNING","EVENING"], key="t_session")
+        t_conv     = tf5.multiselect("✅ Conversion",        ["Converted","Not Converted"], key="t_conv")
+        t_due      = tf6.multiselect("💳 Due Status",        sorted(df_all['Due Status'].dropna().unique()), key="t_due")
+        t_course   = tf7.multiselect("📚 Course",            sorted(df_all['service_name'].dropna().unique()), key="t_course")
+        t_rep      = tf8.multiselect("👤 Sales Rep",         sorted(df_all['sales_rep_name'].dropna().unique()), key="t_rep")
 
-        rc1, rc2 = st.columns(2)
-        with rc1:
-            st.markdown('<div class="section-head">Monthly revenue trend</div>', unsafe_allow_html=True)
-            mo_rev = df_conv.groupby('month')['total_amount'].sum().reset_index().tail(6)
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=mo_rev['month'], y=mo_rev['total_amount'],
-                mode='lines+markers', line=dict(color=GRN, width=2.5, shape='spline'),
-                marker=dict(size=7, color=GRN, line=dict(color=BG,width=2)),
-                fill='tozeroy', fillcolor='rgba(52,211,153,0.08)'))
-            fig.update_layout(**CHART_LAYOUT, height=250,
-                xaxis=dict(showgrid=False), yaxis=dict(gridcolor=GRID, tickformat=",.0f"))
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
+        tg1, tg2, tg3 = st.columns(3)
+        t_status   = tg1.multiselect("📌 Order Status", sorted(df_all['status'].dropna().unique()), key="t_status")
+        t_trader   = tg2.selectbox("🔄 Trader?",          ["All","Yes","No"], key="t_trader")
+        t_search   = tg3.text_input("🔍 Search name / phone / email", key="t_search")
 
-        with rc2:
-            st.markdown('<div class="section-head">Payment collected vs due (monthly)</div>', unsafe_allow_html=True)
-            mo_pay = df_conv.groupby('month').agg(received=('payment_received','sum'), due=('total_due','sum')).reset_index().tail(6)
-            fig2 = go.Figure()
-            fig2.add_trace(go.Bar(name='Received', x=mo_pay['month'], y=mo_pay['received'], marker_color=GRN, opacity=0.85))
-            fig2.add_trace(go.Bar(name='Due',      x=mo_pay['month'], y=mo_pay['due'],      marker_color=RED, opacity=0.85))
-            fig2.update_layout(**CHART_LAYOUT, height=250, barmode='group', bargap=0.3,
-                legend=dict(orientation="h",x=0,y=1.12,font=dict(size=11)),
-                xaxis=dict(showgrid=False), yaxis=dict(gridcolor=GRID))
-            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar":False})
+        df_t = df_all.copy()
+        if t_place:    df_t = df_t[df_t['Place'].isin(t_place)]
+        if t_trainer:  df_t = df_t[df_t['Trainer / Presenter'].isin(t_trainer)]
+        if t_date:
+            fmt_d = [pd.to_datetime(d, format="%d %b %Y") for d in t_date]
+            df_t = df_t[df_t['Seminar Date'].isin(fmt_d)]
+        if t_session:  df_t = df_t[df_t['Session'].isin(t_session)]
+        if t_conv:     df_t = df_t[df_t['Conversion Status'].isin(t_conv)]
+        if t_due:      df_t = df_t[df_t['Due Status'].isin(t_due)]
+        if t_course:   df_t = df_t[df_t['service_name'].isin(t_course)]
+        if t_rep:      df_t = df_t[df_t['sales_rep_name'].isin(t_rep)]
+        if t_status:   df_t = df_t[df_t['status'].isin(t_status)]
+        if t_trader != "All":
+            df_t = df_t[df_t['TRADER'].isin(['YES','Y','TYES'] if t_trader=="Yes" else ['NO','N'])]
+        if t_search:
+            mask = pd.Series([False]*len(df_t))
+            for c in ['NAME','Mobile','email']:
+                if c in df_t.columns:
+                    mask = mask | df_t[c].astype(str).str.lower().str.contains(t_search.lower(), na=False)
+            df_t = df_t[mask]
 
-        rc3, rc4 = st.columns(2)
-        with rc3:
-            st.markdown('<div class="section-head">Offline location revenue (top 10 — indepth)</div>', unsafe_allow_html=True)
-            off_only = indepth[~indepth['location'].str.upper().str.contains('CON')]
-            loc_rev  = off_only.groupby('location')['payment_received'].sum().nlargest(10)
-            fig3 = go.Figure(go.Bar(
-                x=loc_rev.values, y=loc_rev.index, orientation='h',
-                marker_color=TEAL, marker_line_width=0,
-                text=[fmt_cr(v) for v in loc_rev.values], textposition='outside', textfont=dict(size=11,color=TEXT),
-            ))
-            fig3.update_layout(**CHART_LAYOUT, height=300,
-                xaxis=dict(showgrid=False,showticklabels=False), yaxis=dict(showgrid=False), bargap=0.3)
-            st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
+        st.markdown(f"**{len(df_t):,}** records shown")
 
-        with rc4:
-            st.markdown('<div class="section-head">Seminar surplus/deficit by location</div>', unsafe_allow_html=True)
-            surp = df_rep[['Location','Surplus or Deficit']].copy().sort_values('Surplus or Deficit', ascending=True)
-            colors_s = [GRN if v >= 0 else RED for v in surp['Surplus or Deficit']]
-            fig4 = go.Figure(go.Bar(
-                x=surp['Surplus or Deficit'], y=surp['Location'], orientation='h',
-                marker_color=colors_s, marker_line_width=0,
-            ))
-            fig4.update_layout(**CHART_LAYOUT, height=300,
-                xaxis=dict(gridcolor=GRID, zeroline=True, zerolinecolor=GRAY),
-                yaxis=dict(showgrid=False), bargap=0.25)
-            st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar":False})
+        # Display columns
+        display_cols = ['NAME','Mobile','Place','Seminar Date','Session',
+                        'Trainer / Presenter','Conversion Status','Amount Paid',
+                        'service_name','total_amount','payment_received','total_due',
+                        'Due Status','status','sales_rep_name','trainer_clean',
+                        'TRADER','Is our Student ?','Payment Mode Label','Remarks']
+        display_cols = [c for c in display_cols if c in df_t.columns]
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 6 — STUDENT PAYMENT MANAGER
-# ══════════════════════════════════════════════════════════════════════════════
-with tab_students:
-    if not st.session_state.loaded:
-        not_loaded_msg()
-    else:
-        indepth = st.session_state.indepth.copy()
-        off_only = indepth[~indepth['location'].str.upper().str.contains('CON')].copy().reset_index(drop=True)
+        df_show = df_t[display_cols].copy()
+        df_show['Seminar Date'] = df_show['Seminar Date'].dt.strftime("%d %b %Y")
 
-        st.markdown('<div class="tab-head">Offline Attendee — Payment Manager</div>', unsafe_allow_html=True)
-        st.markdown('<div class="tab-sub">Only offline seminar attendees shown. Search, filter and update payment status.</div>', unsafe_allow_html=True)
-
-        total_s  = len(off_only)
-        active_s = (off_only['status'] == 'Active').sum()
-        inactive_s= (off_only['status'] == 'Inactive').sum()
-        due_total = off_only['total_due'].sum()
-        rcvd_total= off_only['payment_received'].sum()
-
-        pm1 = st.columns(4)
-        with pm1[0]: st.markdown(kpi_card("Offline Students",   f"{total_s:,}",           "Excl. conversion sheets",     "neu"), unsafe_allow_html=True)
-        with pm1[1]: st.markdown(kpi_card("Active",             f"{active_s:,}",           f"Inactive: {inactive_s:,}",   "up"), unsafe_allow_html=True)
-        with pm1[2]: st.markdown(kpi_card("Total Received",     fmt_cr(rcvd_total),        "Payment collected",           "up"), unsafe_allow_html=True)
-        with pm1[3]: st.markdown(kpi_card("Total Due",          fmt_cr(due_total),         "Pending recovery",            "down" if due_total>0 else "up"), unsafe_allow_html=True)
-
-        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-
-        # Filters
-        f1, f2, f3 = st.columns([3,2,2])
-        search_s  = f1.text_input("🔍 Search", placeholder="Name, phone, email, location…")
-        filt_stat = f2.selectbox("Filter by status", ["All","Active","Inactive","Closed","Refunded"])
-        filt_loc  = f3.selectbox("Filter by location", ["All"] + sorted(off_only['location'].unique().tolist()))
-
-        df_view = off_only.copy()
-        if search_s:
-            mask = pd.Series([False]*len(df_view))
-            for c in df_view.columns:
-                mask = mask | df_view[c].astype(str).str.lower().str.contains(search_s.lower(), na=False)
-            df_view = df_view[mask]
-        if filt_stat != "All":
-            df_view = df_view[df_view['status'] == filt_stat]
-        if filt_loc != "All":
-            df_view = df_view[df_view['location'] == filt_loc]
-
-        st.markdown(f"Showing **{len(df_view):,}** of **{total_s:,}** records")
-
-        edited = st.data_editor(
-            df_view[['student_name','student_invid','phone','email','location','service_name',
-                     'total_amount','payment_received','total_due','status']],
-            use_container_width=True, height=400,
+        st.dataframe(
+            df_show,
+            use_container_width=True,
+            height=520,
+            hide_index=True,
             column_config={
-                "status": st.column_config.SelectboxColumn("Status",
-                    options=["Active","Inactive","Closed","Refunded","Relationship Buildup"], required=True),
-                "total_amount":      st.column_config.NumberColumn("Total Amt (₹)", format="₹%.0f"),
-                "payment_received":  st.column_config.NumberColumn("Received (₹)",  format="₹%.0f"),
-                "total_due":         st.column_config.NumberColumn("Due (₹)",        format="₹%.0f"),
-            },
-            key="student_editor", num_rows="fixed",
+                "total_amount":     st.column_config.NumberColumn("Course Amount",    format="₹%.0f"),
+                "payment_received": st.column_config.NumberColumn("Collected",        format="₹%.0f"),
+                "total_due":        st.column_config.NumberColumn("Due Amount",       format="₹%.0f"),
+                "Amount Paid":      st.column_config.NumberColumn("Seminar Paid",     format="₹%.0f"),
+                "service_name":     st.column_config.TextColumn("Course"),
+                "sales_rep_name":   st.column_config.TextColumn("Sales Rep"),
+                "trainer_clean":    st.column_config.TextColumn("Trainer (Conv)"),
+                "Trainer / Presenter": st.column_config.TextColumn("Seminar Trainer"),
+                "Payment Mode Label": st.column_config.TextColumn("Payment Mode"),
+            }
         )
 
-        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-        st.markdown("**Export**")
+        st.markdown("<hr style='border-color:rgba(255,255,255,0.07)'>", unsafe_allow_html=True)
+
+        # ── Summary table by location ─────────────────────────────────────────
+        st.markdown("**Summary by Location**")
+        loc_sum = df_t.groupby('Place').agg(
+            Attended=('NAME','count'),
+            Converted=('Conversion Status', lambda x: (x=='Converted').sum()),
+            Total_Revenue=('total_amount','sum'),
+            Collected=('payment_received','sum'),
+            Due=('total_due','sum'),
+        ).reset_index()
+        loc_sum['Conv Rate'] = (loc_sum['Converted']/loc_sum['Attended']*100).round(1).astype(str) + '%'
+        loc_sum['Total_Revenue'] = loc_sum['Total_Revenue'].apply(fmt_inr)
+        loc_sum['Collected']     = loc_sum['Collected'].apply(fmt_inr)
+        loc_sum['Due']           = loc_sum['Due'].apply(fmt_inr)
+        st.dataframe(loc_sum, use_container_width=True, hide_index=True, height=280)
+
+        # ── Export ────────────────────────────────────────────────────────────
+        st.markdown("<hr style='border-color:rgba(255,255,255,0.07)'>", unsafe_allow_html=True)
         def to_xl(df):
             buf = io.BytesIO(); df.to_excel(buf, index=False); return buf.getvalue()
 
         ts = datetime.now().strftime("%Y%m%d_%H%M")
-        ex1,ex2,ex3 = st.columns(3)
-        ex1.download_button("⬇️ Export All Offline Students", to_xl(off_only),
-            file_name=f"offline_students_{ts}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True)
-        ex2.download_button("⬇️ Export Due > 0",
-            to_xl(off_only[off_only['total_due']>0]),
-            file_name=f"students_due_{ts}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True)
-        ex3.download_button("⬇️ Export Active Only",
-            to_xl(off_only[off_only['status']=='Active']),
-            file_name=f"students_active_{ts}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True)
+        ex1,ex2,ex3,ex4 = st.columns(4)
+        ex1.download_button("⬇️ Export filtered records",     to_xl(df_t[display_cols]),
+            file_name=f"seminar_attendees_{ts}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        ex2.download_button("⬇️ Export converted only",
+            to_xl(df_t[df_t['Conversion Status']=='Converted'][display_cols]),
+            file_name=f"converted_{ts}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        ex3.download_button("⬇️ Export with due amount",
+            to_xl(df_t[df_t['total_due']>0][display_cols]),
+            file_name=f"has_due_{ts}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        ex4.download_button("⬇️ Export location summary",     to_xl(loc_sum),
+            file_name=f"location_summary_{ts}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
-<div style="border-top:1px solid rgba(255,255,255,0.06);margin-top:2rem;padding-top:1rem;
+<div style="border-top:1px solid rgba(255,255,255,0.06);margin-top:2rem;padding-top:0.8rem;
      display:flex;justify-content:space-between">
-  <span style="font-size:12px;color:#374151;font-family:'DM Mono',monospace">seminar intelligence dashboard · {datetime.now().strftime("%B %Y").lower()}</span>
-  <span style="font-size:12px;color:#374151">upload fresh files anytime to refresh</span>
+  <span style="font-size:11px;color:#374151;font-family:'DM Mono',monospace">seminar attendee dashboard · {datetime.now().strftime("%B %Y").lower()}</span>
+  <span style="font-size:11px;color:#374151">merged on phone number · upload fresh files to refresh</span>
 </div>""", unsafe_allow_html=True)
