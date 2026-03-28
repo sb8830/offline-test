@@ -303,11 +303,38 @@ def apply_att_filters(df, prefix='att'):
 
 
 def plot_bar(df, x, y, color=None, horizontal=False, height=320, title=None):
-    if df.empty:
+    if df is None or df.empty:
         st.info('No data for this chart.')
         return
-    fig = px.bar(df, x=x if not horizontal else y, y=y if not horizontal else x, color=color,
-                 orientation='h' if horizontal else 'v', title=title)
+    data = df.copy()
+    if x not in data.columns or y not in data.columns:
+        st.info(f'Chart skipped because required columns are missing: {x}, {y}')
+        return
+    if color and color not in data.columns:
+        color = None
+    x_col = y if horizontal else x
+    y_col = x if horizontal else y
+    if x_col not in data.columns or y_col not in data.columns:
+        st.info('Chart skipped because the selected axes are unavailable.')
+        return
+    data = data[[c for c in [x_col, y_col, color] if c and c in data.columns]].copy()
+    if horizontal:
+        data[x_col] = pd.to_numeric(data[x_col], errors='coerce')
+        data = data.dropna(subset=[x_col])
+    else:
+        data[y_col] = pd.to_numeric(data[y_col], errors='coerce')
+        data = data.dropna(subset=[y_col])
+    if data.empty:
+        st.info('No valid numeric values available for this chart.')
+        return
+    fig = px.bar(
+        data,
+        x=x_col,
+        y=y_col,
+        color=color,
+        orientation='h' if horizontal else 'v',
+        title=title,
+    )
     fig.update_layout(**PLOT_BASE, height=height)
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(gridcolor=GRID)
@@ -497,7 +524,7 @@ else:
         with c1:
             section('Lead stage pipeline')
             stage = ld['stage_name'].value_counts().head(12)
-            plot_bar(stage.reset_index().rename(columns={'index': 'Stage', 'stage_name': 'Count'}), 'Stage', 'Count', height=340)
+            plot_bar(stage.rename_axis('Stage').reset_index(name='Count'), 'Stage', 'Count', height=340)
         with c2:
             section('Attempted vs unattempted')
             attm = ld['Attempted/Unattempted'].value_counts()
@@ -507,11 +534,11 @@ else:
         with c3:
             section('Top campaigns')
             camp = ld['campaign_name'].value_counts().head(15)
-            plot_bar(camp.reset_index().rename(columns={'index': 'Campaign', 'campaign_name': 'Count'}), 'Count', 'Campaign', horizontal=True, height=360)
+            plot_bar(camp.rename_axis('Campaign').reset_index(name='Count'), 'Count', 'Campaign', horizontal=True, height=360)
         with c4:
             section('Lead owners')
             own = ld['leadownername'].value_counts().head(15)
-            plot_bar(own.reset_index().rename(columns={'index': 'Owner', 'leadownername': 'Count'}), 'Count', 'Owner', horizontal=True, height=360)
+            plot_bar(own.rename_axis('Owner').reset_index(name='Count'), 'Count', 'Owner', horizontal=True, height=360)
 
     with tab_conversion:
         with st.expander('Filters', expanded=True):
