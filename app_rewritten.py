@@ -4,624 +4,768 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
-from plotly.subplots import make_subplots
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 st.set_page_config(
-    page_title='Seminar Intelligence',
-    page_icon='📊',
-    layout='wide',
-    initial_sidebar_state='collapsed',
+    page_title="Seminar Intelligence Pro",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
+# ==============================
+# THEME
+# ==============================
 st.markdown(
     """
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
     <style>
-      #MainMenu, footer, header {visibility:hidden}
-      .block-container {padding-top:0.8rem; padding-bottom:2rem; max-width:100% !important}
-      .stApp {background:#060910; color:#eceef5}
-      .card {
-        background:#0c1018;
-        border:1px solid rgba(255,255,255,.07);
-        border-radius:14px;
+      :root {
+        --bg: #08111f;
+        --panel: #0f1728;
+        --panel-2: #111c31;
+        --line: rgba(255,255,255,0.08);
+        --text: #f2f7ff;
+        --muted: #8ea1c2;
+        --blue: #60a5fa;
+        --green: #4fce8f;
+        --red: #fb7185;
+        --amber: #fbbf24;
+        --purple: #a78bfa;
+        --teal: #22d3ee;
+      }
+      html, body, [class*="css"] {font-family:'Inter', sans-serif;}
+      .stApp {
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(34,211,238,0.10), transparent 22%),
+          radial-gradient(circle at top right, rgba(167,139,250,0.12), transparent 18%),
+          linear-gradient(180deg, #08111f 0%, #091220 48%, #060c16 100%);
+      }
+      #MainMenu, header, footer {visibility:hidden;}
+      .block-container {padding-top: 1rem; max-width: 100% !important;}
+      div[data-testid="stToolbar"], div[data-testid="stDecoration"], div[data-testid="stStatusWidget"] {display:none !important;}
+      .hero {
+        background: linear-gradient(135deg, rgba(17,28,49,.98), rgba(9,16,29,.98));
+        border:1px solid var(--line);
+        border-radius:24px;
+        padding:22px 24px;
+        margin-bottom:14px;
+        box-shadow: 0 18px 46px rgba(0,0,0,.28);
+      }
+      .hero h1 {
+        font-family:'Syne', sans-serif;
+        margin:0;
+        font-size:34px;
+        line-height:1.08;
+        letter-spacing:-0.04em;
+      }
+      .hero p {
+        margin:10px 0 0 0;
+        color: var(--muted);
+        font-size:14px;
+        line-height:1.6;
+      }
+      .chip-row {display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+      .chip {
+        padding:8px 12px;
+        border-radius:999px;
+        background:rgba(255,255,255,.05);
+        border:1px solid var(--line);
+        color:#dbe7fb;
+        font-size:12px;
+      }
+      .panel {
+        background: linear-gradient(180deg, rgba(15,23,40,.96), rgba(10,17,30,.98));
+        border:1px solid var(--line);
+        border-radius:22px;
         padding:16px;
-        margin-bottom:12px;
+        margin-bottom:14px;
+        box-shadow:0 12px 32px rgba(0,0,0,.20);
       }
+      .panel-title {
+        display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;
+      }
+      .panel-title h3 {
+        margin:0; font-size:14px; text-transform:uppercase; letter-spacing:.12em; color:#f7d168;
+      }
+      .panel-title p {
+        margin:0; color:var(--muted); font-size:12px;
+      }
+      .kpi-grid {display:grid; gap:12px;}
       .kpi {
-        background:#111520;
-        border:1px solid rgba(255,255,255,.07);
-        border-radius:12px;
-        padding:14px;
+        position:relative; overflow:hidden;
+        background: linear-gradient(180deg, rgba(18,29,50,.98), rgba(11,19,34,.98));
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:20px;
+        padding:16px;
+        min-height:118px;
       }
-      .muted {color:#8a90aa; font-size:12px}
-      .title {font-size:28px; font-weight:800; margin-bottom:4px}
-      .section-title {font-size:13px; font-weight:700; color:#f7c948; letter-spacing:.08em; text-transform:uppercase; margin-bottom:12px}
-      div[data-testid="metric-container"] {
-        background:#111520 !important;
-        border:1px solid rgba(255,255,255,.07) !important;
+      .kpi::before {
+        content:""; position:absolute; left:0; right:0; top:0; height:3px;
+        background: linear-gradient(90deg, var(--accent), transparent);
+      }
+      .kpi::after {
+        content:""; position:absolute; width:120px; height:120px; right:-44px; top:-44px;
+        background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent), transparent 65%);
+      }
+      .kpi-label {font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted);}
+      .kpi-value {font-family:'Syne', sans-serif; font-size:28px; margin-top:10px; line-height:1;}
+      .kpi-sub {margin-top:10px; font-size:12px; color:#d6e2f4;}
+      .info {--accent: var(--blue);} .success {--accent: var(--green);} .danger {--accent: var(--red);} .warning {--accent: var(--amber);} .purple {--accent: var(--purple);} .teal {--accent: var(--teal);}
+      .login-card {
+        max-width: 460px;
+        margin: 8vh auto 0 auto;
+        background: linear-gradient(180deg, rgba(15,23,40,.98), rgba(10,17,30,.98));
+        border:1px solid var(--line);
+        border-radius:24px;
+        padding:26px;
+        box-shadow:0 20px 50px rgba(0,0,0,.30);
+      }
+      .login-card h2 {font-family:'Syne', sans-serif; margin:0; font-size:30px;}
+      .login-card p {color:var(--muted); font-size:14px; line-height:1.6;}
+      .helper {color: var(--muted); font-size:12px;}
+      div[data-baseweb="select"] > div,
+      div[data-baseweb="input"] > div,
+      .stDateInput > div > div,
+      .stNumberInput > div > div {
+        background:#111c31 !important;
+        border-color:rgba(255,255,255,.08) !important;
         border-radius:12px !important;
       }
-      .stTabs [data-baseweb="tab-list"] {gap:0.5rem}
-      .stTabs [data-baseweb="tab"] {background:transparent; border-radius:8px; color:#8a90aa}
-      .stTabs [aria-selected="true"] {color:#4fce8f}
+      .stMultiSelect [data-baseweb="tag"] {
+        background:rgba(96,165,250,.15) !important;
+        border:1px solid rgba(96,165,250,.25) !important;
+      }
+      .stTabs [data-baseweb="tab-list"] {gap:8px; border-bottom:none;}
+      .stTabs [data-baseweb="tab"] {
+        border:1px solid rgba(255,255,255,.08) !important;
+        background:#111c31 !important;
+        border-radius:12px !important;
+        color:#a9bbd8 !important;
+        padding:.5rem 1rem !important;
+      }
+      .stTabs [aria-selected="true"] {
+        color:white !important;
+        border-color:rgba(96,165,250,.40) !important;
+        box-shadow: inset 0 0 0 1px rgba(96,165,250,.15);
+      }
+      button[data-testid="stBaseButton-primary"] {
+        background:linear-gradient(135deg,#60a5fa,#22d3ee) !important;
+        color:#07111f !important;
+        border:none !important;
+        border-radius:12px !important;
+        font-weight:800 !important;
+      }
+      button[data-testid="stBaseButton-secondary"] {
+        background:#111c31 !important;
+        color:#dbe7fb !important;
+        border:1px solid rgba(255,255,255,.10) !important;
+        border-radius:12px !important;
+      }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-BG = '#0c1018'
-GRID = 'rgba(255,255,255,0.07)'
-TXT = '#8a90aa'
-GREEN = '#4fce8f'
-BLUE = '#4f8ef7'
-RED = '#f76f4f'
-AMBER = '#f7c948'
-PURPLE = '#b44fe7'
-TEAL = '#4fd8f7'
-GRAY = '#596275'
-PLOT_BASE = dict(
-    paper_bgcolor=BG,
-    plot_bgcolor=BG,
-    font=dict(color=TXT, size=11),
-    margin=dict(l=20, r=20, t=30, b=20),
-)
-PM = {
-    'mode1': 'Full Payment',
-    'mode2': 'Instalment',
-    'mode3': 'EMI',
-    'mode4': 'Partial',
-    'mode13': 'Scholarship',
-    'mode5': 'Other',
-}
+# ==============================
+# STATE
+# ==============================
+for key, default in {
+    "logged_in": False,
+    "master": None,
+}.items():
+    st.session_state.setdefault(key, default)
+
+# ==============================
+# HELPERS
+# ==============================
+def fmt_currency(v):
+    if pd.isna(v):
+        v = 0
+    v = float(v)
+    if v >= 1e7:
+        return f"₹{v/1e7:.2f}Cr"
+    if v >= 1e5:
+        return f"₹{v/1e5:.2f}L"
+    return f"₹{v:,.0f}"
 
 
-def fmt_inr(value):
-    if pd.isna(value):
-        return '₹0'
-    value = float(value)
-    if abs(value) >= 1e7:
-        return f'₹{value/1e7:.2f}Cr'
-    if abs(value) >= 1e5:
-        return f'₹{value/1e5:.2f}L'
-    return f'₹{value:,.0f}'
-
-
-def ensure_columns(df, defaults):
-    for col, default in defaults.items():
-        if col not in df.columns:
-            df[col] = default
+def safe_col(df, col, default="Unknown"):
+    if col not in df.columns:
+        df[col] = default
     return df
 
 
 def clean_phone(series):
-    return series.astype(str).str.replace(r'\D', '', regex=True).str[-10:]
-
-
-def normalize_bool_text(series, true_values=None):
-    true_values = set(true_values or ['YES', 'TRUE', '1', 'CONVERTED'])
-    s = series.astype(str).str.strip().str.upper()
-    return s.isin(true_values)
-
-
-@st.cache_data(show_spinner=False)
-def load_all(seminar_bytes, conversion_bytes, leads_bytes):
-    # Seminar
-    sem = pd.read_csv(io.BytesIO(seminar_bytes))
-    sem.columns = sem.columns.str.strip()
-    sem = ensure_columns(
-        sem,
-        {
-            'NAME': '',
-            'Mobile': '',
-            'Place': 'Unknown',
-            'Trainer / Presenter': 'Unknown',
-            'Seminar Date': pd.NaT,
-            'Session': 'Unknown',
-            'Is Attended ?': 'NO',
-            'Is Converted ?': 'NO',
-            'Amount Paid': 0,
-            'Mode of Payment': 'Unknown',
-            'TRADER': 'NO',
-            'Is our Student ?': 'NO',
-            'Remarks': '',
-        },
+    return (
+        series.astype(str)
+        .str.replace(r"\D", "", regex=True)
+        .str[-10:]
+        .replace("", pd.NA)
     )
-    for col in ['Place', 'Trainer / Presenter', 'Session', 'TRADER', 'Is our Student ?', 'Mode of Payment']:
-        sem[col] = sem[col].astype(str).str.strip()
-    sem['Seminar Date'] = pd.to_datetime(sem['Seminar Date'], errors='coerce', dayfirst=True)
-    sem['Amount Paid'] = pd.to_numeric(sem['Amount Paid'], errors='coerce').fillna(0)
-    sem['mob'] = clean_phone(sem['Mobile'])
-    trainer_map = {
-        'HIRAMNOY LAHERI/PRATIM CHAKRABORTY': 'HIRANMOY LAHIRI & PRATIM CHAKRABORTY',
-        'PRATIM KUMAR CHAKRABORTY/MIHIR KANTI CHAKRABORTY': 'PRATIM CHAKRABORTY & MIHIR KANTI CHAKRABORTY',
-        'PRATIM KUMAR CHAKRABORTY & AKASH MISHRA': 'PRATIM CHAKRABORTY & AKASH MISHRA',
-        'PRFATIM CHAKRABORTY & AKASH MISHRA': 'PRATIM CHAKRABORTY & AKASH MISHRA',
-        'PRATIM CHAKRABORTY & MIHIR KANTI CHAKRABORTYPARIJAT': 'PRATIM CHAKRABORTY & MIHIR KANTI CHAKRABORTY',
-    }
-    sem['Trainer Norm'] = sem['Trainer / Presenter'].astype(str).str.upper().replace(trainer_map)
-    sem['Attended'] = normalize_bool_text(sem['Is Attended ?'])
-    sem['Converted Flag'] = normalize_bool_text(sem['Is Converted ?'])
-    attended = sem[sem['Attended']].copy().reset_index(drop=True)
-    attended['Conv Status'] = attended['Converted Flag'].map({True: 'Converted', False: 'Not Converted'})
-
-    # Conversion
-    conv = pd.read_excel(io.BytesIO(conversion_bytes))
-    conv.columns = conv.columns.str.strip()
-    conv = ensure_columns(
-        conv,
-        {
-            '_id': range(1, len(conv) + 1),
-            'phone': '',
-            'payment_received': 0,
-            'total_amount': 0,
-            'total_due': 0,
-            'total_gst': 0,
-            'order_date': pd.NaT,
-            'payment_mode': 'Unknown',
-            'service_name': 'Unknown',
-            'sales_rep_name': 'Unknown',
-            'trainer': 'Unknown',
-            'status': 'Unknown',
-            'is_refunded': False,
-            'is_shortClosed': False,
-            'student_name': '',
-            'email': '',
-            'batch_date': pd.NaT,
-            'orderID': '',
-            'service_code': '',
-            'student_invid': '',
-        },
-    )
-    for col in ['payment_received', 'total_amount', 'total_due', 'total_gst']:
-        conv[col] = pd.to_numeric(conv[col], errors='coerce').fillna(0)
-    conv['order_date'] = pd.to_datetime(conv['order_date'], errors='coerce', utc=True).dt.tz_localize(None)
-    conv['batch_date'] = pd.to_datetime(conv['batch_date'], errors='coerce', utc=True).dt.tz_localize(None)
-    conv['phone_clean'] = clean_phone(conv['phone'])
-    conv['PM Label'] = conv['payment_mode'].map(PM).fillna(conv['payment_mode'].astype(str))
-    conv['service_name'] = conv['service_name'].astype(str).str.strip()
-    conv['sales_rep_name'] = conv['sales_rep_name'].astype(str).str.strip()
-    conv['trainer_name'] = conv['trainer'].astype(str).str.split(' - ').str[-1].str.strip()
-    conv['month'] = conv['order_date'].dt.to_period('M').astype(str)
-    conv['is_refunded'] = conv['is_refunded'].fillna(False).astype(bool)
-    conv['is_shortClosed'] = conv['is_shortClosed'].fillna(False).astype(bool)
-
-    # Leads
-    leads_xf = pd.ExcelFile(io.BytesIO(leads_bytes))
-    sheet = 'Sheet 1' if 'Sheet 1' in leads_xf.sheet_names else leads_xf.sheet_names[0]
-    leads = pd.read_excel(leads_xf, sheet_name=sheet)
-    leads.columns = leads.columns.str.strip()
-    leads = ensure_columns(
-        leads,
-        {
-            '_id': range(1, len(leads) + 1),
-            'name': '',
-            'phone': '',
-            'email': '',
-            'leaddate': pd.NaT,
-            'converted_from': 'Unknown',
-            'leadsource': 'Unknown',
-            'campaign_name': 'Unknown',
-            'leadstatus': 'Unknown',
-            'stage_name': 'Unknown',
-            'leadownername': 'Unknown',
-            'state': 'Unknown',
-            'Attempted/Unattempted': 'Unknown',
-            'servicename': 'Unknown',
-            'remarks': '',
-        },
-    )
-    leads['leaddate'] = pd.to_datetime(leads['leaddate'], errors='coerce')
-    for col in ['converted_from', 'leadsource', 'campaign_name', 'leadstatus', 'stage_name', 'leadownername', 'state', 'Attempted/Unattempted', 'servicename']:
-        leads[col] = leads[col].astype(str).str.strip().replace({'nan': 'Unknown', 'None': 'Unknown', '': 'Unknown'})
-    leads['Attempted/Unattempted'] = leads['Attempted/Unattempted'].replace({
-        'attempted': 'Attempted',
-        'unattempted': 'Unattempted',
-        'ATTEMPTED': 'Attempted',
-        'UNATTEMPTED': 'Unattempted',
-    })
-    leads['phone_clean'] = clean_phone(leads['phone'])
-    leads['Lead Month'] = leads['leaddate'].dt.to_period('M').astype(str)
-    leads['Is Converted'] = leads['leadstatus'].astype(str).str.lower().str.contains('converted|seat booked|sales closed', na=False)
-
-    # Merge
-    order_cols = [
-        'phone_clean', 'orderID', 'order_date', 'service_code', 'service_name', 'payment_received',
-        'total_amount', 'total_due', 'total_gst', 'payment_mode', 'PM Label', 'status',
-        'sales_rep_name', 'trainer', 'trainer_name', 'student_invid', 'batch_date', 'month',
-        'is_refunded', 'is_shortClosed'
-    ]
-    att = attended.merge(conv[order_cols], left_on='mob', right_on='phone_clean', how='left')
-
-    def due_status(row):
-        if pd.isna(row.get('total_due')):
-            return 'No Order'
-        if float(row.get('total_due', 0)) <= 0:
-            return 'Fully Paid'
-        if float(row.get('total_amount', 0)) > float(row.get('total_due', 0)):
-            return 'Partially Paid'
-        return 'Fully Due'
-
-    att['Due Status'] = att.apply(due_status, axis=1)
-    lead_cols = ['phone_clean', 'converted_from', 'leadsource', 'campaign_name', 'leadstatus', 'stage_name', 'leadownername', 'state', 'Attempted/Unattempted']
-    att = att.merge(leads[lead_cols].drop_duplicates('phone_clean'), left_on='mob', right_on='phone_clean', how='left', suffixes=('', '_lead'))
-    for col in ['converted_from', 'leadsource', 'campaign_name', 'leadstatus', 'stage_name', 'leadownername', 'state', 'Attempted/Unattempted']:
-        att[col] = att[col].fillna('Unknown')
-
-    return {'sem': sem, 'att': att, 'conv': conv, 'leads': leads}
 
 
-def section(title):
-    st.markdown(f'<div class="section-title">{title}</div>', unsafe_allow_html=True)
+def bool_from_text(series):
+    s = series.astype(str).str.strip().str.lower()
+    return s.isin(["yes", "true", "converted", "1"])
 
 
-def no_data(msg='Upload all 3 files to continue.'):
-    st.markdown(f'<div class="card"><div class="title">No data loaded</div><div class="muted">{msg}</div></div>', unsafe_allow_html=True)
+def draw_kpis(cards, cols=6):
+    html = [f'<div class="kpi-grid" style="grid-template-columns:repeat({cols}, minmax(0,1fr))">']
+    for c in cards:
+        html.append(
+            f'''<div class="kpi {c[3]}">
+                <div class="kpi-label">{c[0]}</div>
+                <div class="kpi-value">{c[1]}</div>
+                <div class="kpi-sub">{c[2]}</div>
+            </div>'''
+        )
+    html.append("</div>")
+    st.markdown("".join(html), unsafe_allow_html=True)
 
 
-def render_kpis(items, cols=4):
-    row = st.columns(cols)
-    for i, item in enumerate(items):
-        with row[i % cols]:
-            st.metric(item['label'], item['value'], item.get('delta'))
-
-
-def apply_att_filters(df, prefix='att'):
-    with st.expander('Filters', expanded=True):
-        c1, c2, c3, c4 = st.columns(4)
-        c5, c6, c7, c8 = st.columns(4)
-        places = c1.multiselect('Location', sorted(df['Place'].dropna().astype(str).unique()), key=f'{prefix}_p')
-        trainers = c2.multiselect('Trainer', sorted(df['Trainer Norm'].dropna().astype(str).unique()), key=f'{prefix}_t')
-        sessions = c3.multiselect('Session', sorted(df['Session'].dropna().astype(str).unique()), key=f'{prefix}_s')
-        conv_status = c4.multiselect('Conversion', sorted(df['Conv Status'].dropna().astype(str).unique()), key=f'{prefix}_c')
-        due_status = c5.multiselect('Due Status', sorted(df['Due Status'].dropna().astype(str).unique()), key=f'{prefix}_d')
-        courses = c6.multiselect('Course', sorted(df['service_name'].dropna().astype(str).unique()), key=f'{prefix}_co')
-        reps = c7.multiselect('Sales Rep', sorted(df['sales_rep_name'].dropna().astype(str).unique()), key=f'{prefix}_r')
-        trader = c8.selectbox('Trader?', ['All', 'Yes', 'No'], key=f'{prefix}_tr')
-    out = df.copy()
-    if places:
-        out = out[out['Place'].isin(places)]
-    if trainers:
-        out = out[out['Trainer Norm'].isin(trainers)]
-    if sessions:
-        out = out[out['Session'].isin(sessions)]
-    if conv_status:
-        out = out[out['Conv Status'].isin(conv_status)]
-    if due_status:
-        out = out[out['Due Status'].isin(due_status)]
-    if courses:
-        out = out[out['service_name'].isin(courses)]
-    if reps:
-        out = out[out['sales_rep_name'].isin(reps)]
-    if trader == 'Yes':
-        out = out[out['TRADER'].astype(str).str.upper().isin(['YES', 'TYES'])]
-    elif trader == 'No':
-        out = out[~out['TRADER'].astype(str).str.upper().isin(['YES', 'TYES'])]
-    return out
-
-
-def plot_bar(df, x, y, color=None, horizontal=False, height=320, title=None):
-    if df is None or df.empty:
-        st.info('No data for this chart.')
+def safe_plot_bar(df, x, y, color=None, height=320, horizontal=False, title=""):
+    missing = [c for c in [x, y] if c not in df.columns]
+    if missing or df.empty:
+        st.info("No chart data available for the current filters.")
         return
-    data = df.copy()
-    if x not in data.columns or y not in data.columns:
-        st.info(f'Chart skipped because required columns are missing: {x}, {y}')
-        return
-    if color and color not in data.columns:
+    chart_df = df.copy()
+    if color not in chart_df.columns:
         color = None
-    x_col = y if horizontal else x
-    y_col = x if horizontal else y
-    if x_col not in data.columns or y_col not in data.columns:
-        st.info('Chart skipped because the selected axes are unavailable.')
-        return
-    data = data[[c for c in [x_col, y_col, color] if c and c in data.columns]].copy()
-    if horizontal:
-        data[x_col] = pd.to_numeric(data[x_col], errors='coerce')
-        data = data.dropna(subset=[x_col])
-    else:
-        data[y_col] = pd.to_numeric(data[y_col], errors='coerce')
-        data = data.dropna(subset=[y_col])
-    if data.empty:
-        st.info('No valid numeric values available for this chart.')
-        return
+    if y in chart_df.columns:
+        chart_df[y] = pd.to_numeric(chart_df[y], errors="coerce").fillna(0)
     fig = px.bar(
-        data,
-        x=x_col,
-        y=y_col,
+        chart_df,
+        x=x if not horizontal else y,
+        y=y if not horizontal else x,
         color=color,
-        orientation='h' if horizontal else 'v',
+        orientation="h" if horizontal else "v",
         title=title,
     )
-    fig.update_layout(**PLOT_BASE, height=height)
+    fig.update_layout(
+        height=height,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#dce6f8"),
+        margin=dict(l=10, r=10, t=40 if title else 10, b=10),
+        legend_title_text="",
+    )
     fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(gridcolor=GRID)
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    fig.update_yaxes(gridcolor="rgba(255,255,255,0.08)")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
-def plot_donut(labels, values, height=280):
-    fig = go.Figure(go.Pie(labels=labels, values=values, hole=0.6, textinfo='label+percent'))
-    fig.update_layout(**PLOT_BASE, height=height, showlegend=True)
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+# ==============================
+# LOGIN
+# ==============================
+def render_login():
+    st.markdown(
+        """
+        <div class="login-card">
+          <h2>Seminar Intelligence Pro</h2>
+          <p>Login to access the unified post-seminar conversion dashboard. This version is built around one core workflow: <b>offline seminar attendees → conversion after seminar → course, payment, due, and lead-source intelligence</b>.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.container():
+        left, center, right = st.columns([1.2, 1.5, 1.2])
+        with center:
+            username = st.text_input("Username", placeholder="Enter username")
+            password = st.text_input("Password", type="password", placeholder="Enter password")
+            login_clicked = st.button("Login", type="primary", use_container_width=True)
+            st.caption("Demo credentials: username `admin` and password `invesmate123`")
+            if login_clicked:
+                if username == "admin" and password == "invesmate123":
+                    st.session_state.logged_in = True
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
 
 
+if not st.session_state.logged_in:
+    render_login()
+    st.stop()
+
+
+# ==============================
+# DATA PROCESSING
+# ==============================
+@st.cache_data(show_spinner=False)
+def process_all(sem_bytes, conv_bytes, lead_bytes):
+    sem = pd.read_csv(io.BytesIO(sem_bytes))
+    sem.columns = sem.columns.str.strip()
+    for col in [
+        "NAME", "Mobile", "Place", "Trainer / Presenter", "Session",
+        "Is Attended ?", "Is Converted ?", "TRADER", "Is our Student ?",
+        "Mode of Payment", "Remarks"
+    ]:
+        safe_col(sem, col, "")
+    safe_col(sem, "Seminar Date", pd.NaT)
+    safe_col(sem, "Amount Paid", 0)
+
+    sem["Seminar Date"] = pd.to_datetime(sem["Seminar Date"], errors="coerce", dayfirst=True)
+    sem["Amount Paid"] = pd.to_numeric(sem["Amount Paid"], errors="coerce").fillna(0)
+    text_cols = [
+        "NAME", "Place", "Trainer / Presenter", "Session", "Is Attended ?",
+        "Is Converted ?", "TRADER", "Is our Student ?", "Mode of Payment", "Remarks"
+    ]
+    for col in text_cols:
+        sem[col] = sem[col].astype(str).str.strip()
+    sem["mobile_clean"] = clean_phone(sem["Mobile"])
+    sem["Trainer Norm"] = sem["Trainer / Presenter"].str.upper()
+    sem["Session"] = sem["Session"].str.upper()
+    sem["attended_flag"] = bool_from_text(sem["Is Attended ?"])
+    attended = sem[sem["attended_flag"]].copy()
+
+    conv = pd.read_excel(io.BytesIO(conv_bytes))
+    conv.columns = conv.columns.str.strip()
+    for col in [
+        "phone", "service_name", "payment_mode", "status", "sales_rep_name",
+        "trainer", "student_name", "email"
+    ]:
+        safe_col(conv, col, "")
+    for col in ["payment_received", "total_amount", "total_due", "total_gst"]:
+        safe_col(conv, col, 0)
+    safe_col(conv, "order_date", pd.NaT)
+
+    conv["order_date"] = pd.to_datetime(conv["order_date"], errors="coerce", utc=True).dt.tz_localize(None)
+    conv["payment_received"] = pd.to_numeric(conv["payment_received"], errors="coerce").fillna(0)
+    conv["total_amount"] = pd.to_numeric(conv["total_amount"], errors="coerce").fillna(0)
+    conv["total_due"] = pd.to_numeric(conv["total_due"], errors="coerce").fillna(0)
+    conv["phone_clean"] = clean_phone(conv["phone"])
+    conv["service_name"] = conv["service_name"].astype(str).str.strip()
+    conv["status"] = conv["status"].astype(str).str.strip()
+    conv["sales_rep_name"] = conv["sales_rep_name"].astype(str).str.strip()
+    conv["payment_mode"] = conv["payment_mode"].astype(str).str.strip()
+    conv["trainer_name"] = conv["trainer"].astype(str).str.split(" - ").str[-1].str.strip()
+    conv["month"] = conv["order_date"].dt.to_period("M").astype(str)
+    conv["due_zero"] = conv["total_due"].fillna(0).le(0)
+
+    try:
+        leads = pd.read_excel(io.BytesIO(lead_bytes), sheet_name="Sheet 1")
+    except Exception:
+        leads = pd.read_excel(io.BytesIO(lead_bytes))
+    leads.columns = leads.columns.str.strip()
+    for col in [
+        "name", "phone", "email", "converted_from", "leadsource", "campaign_name",
+        "leadstatus", "stage_name", "leadownername", "state", "Attempted/Unattempted",
+        "servicename", "remarks"
+    ]:
+        safe_col(leads, col, "Unknown")
+    safe_col(leads, "leaddate", pd.NaT)
+
+    leads["leaddate"] = pd.to_datetime(leads["leaddate"], errors="coerce")
+    for col in [
+        "converted_from", "leadsource", "campaign_name", "leadstatus", "stage_name",
+        "leadownername", "state", "Attempted/Unattempted", "servicename", "remarks"
+    ]:
+        leads[col] = leads[col].astype(str).str.strip().replace({"nan": "Unknown", "": "Unknown"})
+    leads["phone_clean"] = clean_phone(leads["phone"])
+    leads["leadstatus_lower"] = leads["leadstatus"].astype(str).str.lower()
+    leads["is_converted"] = leads["leadstatus_lower"].str.contains("converted", na=False)
+
+    # One lead row per phone for enrichment in attendee analysis
+    leads_one = (
+        leads.sort_values("leaddate", na_position="last")
+        .drop_duplicates("phone_clean", keep="last")
+        [[
+            "phone_clean", "converted_from", "leadsource", "campaign_name", "leadstatus",
+            "stage_name", "leadownername", "state", "Attempted/Unattempted", "servicename",
+            "is_converted", "leaddate"
+        ]]
+    )
+
+    # Orders after seminar only: attach first order after each seminar date by mobile
+    merged = attended.merge(conv, left_on="mobile_clean", right_on="phone_clean", how="left", suffixes=("", "_conv"))
+    merged["after_seminar"] = merged["order_date"].ge(merged["Seminar Date"]) & merged["order_date"].notna() & merged["Seminar Date"].notna()
+
+    post = merged[merged["after_seminar"]].copy()
+    if not post.empty:
+        post = post.sort_values(["mobile_clean", "Seminar Date", "order_date", "total_amount"], ascending=[True, True, True, False])
+        first_post = post.drop_duplicates(["mobile_clean", "Seminar Date"], keep="first")
+    else:
+        first_post = attended.copy()
+        for col in conv.columns:
+            if col not in first_post.columns:
+                first_post[col] = pd.NA
+        first_post["after_seminar"] = False
+
+    base = attended.merge(
+        first_post[[c for c in first_post.columns if c not in attended.columns or c in [
+            "mobile_clean", "Seminar Date", "order_date", "service_name", "payment_received",
+            "total_amount", "total_due", "status", "sales_rep_name", "payment_mode",
+            "trainer_name", "month", "due_zero", "after_seminar", "student_name", "email"
+        ]]],
+        on=["mobile_clean", "Seminar Date"],
+        how="left",
+        suffixes=("", "_post")
+    )
+
+    # Clean up any duplicate columns from merge
+    for col in ["order_date_post", "service_name_post", "payment_received_post", "total_amount_post", "total_due_post"]:
+        if col in base.columns:
+            original = col.replace("_post", "")
+            if original not in base.columns:
+                base[original] = base[col]
+
+    base = base.merge(leads_one, on="phone_clean", how="left") if "phone_clean" in base.columns else base.merge(leads_one, left_on="mobile_clean", right_on="phone_clean", how="left")
+
+    if "phone_clean_x" in base.columns:
+        base["phone_clean"] = base["phone_clean_x"]
+    if "phone_clean_y" in base.columns:
+        base["lead_phone_clean"] = base["phone_clean_y"]
+
+    base["conversion_status"] = base["after_seminar"].map({True: "Converted After Seminar", False: "Not Converted After Seminar"}).fillna("Not Converted After Seminar")
+    base["due_bucket"] = pd.Series(pd.NA, index=base.index)
+    base.loc[base["after_seminar"] & base["total_due"].fillna(0).le(0), "due_bucket"] = "Due 0"
+    base.loc[base["after_seminar"] & base["total_due"].fillna(0).gt(0), "due_bucket"] = "Has Due"
+    base["lead_origin"] = base["converted_from"].fillna("Unknown")
+    base["lead_source_name"] = base["leadsource"].fillna("Unknown")
+
+    return {
+        "seminar": sem,
+        "attended": attended,
+        "conversion": conv,
+        "leads": leads,
+        "master": base,
+    }
+
+
+# ==============================
+# FILE UPLOAD + HERO
+# ==============================
 st.markdown(
     f"""
-    <div class="card" style="padding:18px 20px; margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-            <div>
-                <div class="title">Invesmate Seminar Intelligence Hub</div>
-                <div class="muted">Upload 3 files, auto-merge records, and explore seminar, leads, and conversion analytics.</div>
-            </div>
-            <div class="muted">{datetime.now().strftime('%d %b %Y %H:%M')}</div>
-        </div>
+    <div class="hero">
+      <h1>Unified Offline Seminar Conversion Intelligence</h1>
+      <p>This dashboard is designed around one journey: <b>who attended the offline seminar</b>, <b>who converted after attending</b>, <b>when the order was created</b>, <b>which course and payment amount were mapped</b>, <b>whether due is zero</b>, and <b>whether the student originated from webinar or non-webinar along with lead source</b>.</p>
+      <div class="chip-row">
+        <div class="chip">All filters on one page</div>
+        <div class="chip">Post-seminar conversion focus</div>
+        <div class="chip">Course + payment + due intelligence</div>
+        <div class="chip">Lead origin + source mapping</div>
+        <div class="chip">{datetime.now().strftime('%d %b %Y %H:%M')}</div>
+      </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-for key, default in [('loaded', False), ('data', None)]:
-    if key not in st.session_state:
-        st.session_state[key] = default
+with st.container():
+    up1, up2, up3, up4 = st.columns([1, 1, 1, 0.65])
+    f_sem = up1.file_uploader("Seminar CSV", type=["csv"], key="sem")
+    f_conv = up2.file_uploader("Conversion XLSX", type=["xlsx", "xls"], key="conv")
+    f_lead = up3.file_uploader("Leads XLSX", type=["xlsx", "xls"], key="lead")
+    load_btn = up4.button("Load Data", type="primary", use_container_width=True)
 
-
-tab_upload, tab_overview, tab_seminar, tab_leads, tab_conversion, tab_records = st.tabs(
-    ['📁 Upload', '🏠 Overview', '🎯 Seminar', '📣 Leads', '💰 Conversion', '📋 Records']
-)
-
-with tab_upload:
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        seminar_file = st.file_uploader('Seminar CSV', type=['csv'])
-    with c2:
-        conversion_file = st.file_uploader('Conversion XLSX', type=['xlsx', 'xls'])
-    with c3:
-        leads_file = st.file_uploader('Leads XLSX', type=['xlsx', 'xls'])
-
-    if seminar_file and conversion_file and leads_file:
-        if st.button('Generate dashboard', type='primary', use_container_width=True):
-            with st.spinner('Processing files...'):
-                st.session_state.data = load_all(seminar_file.read(), conversion_file.read(), leads_file.read())
-                st.session_state.loaded = True
-            st.success('Dashboard ready.')
-            att = st.session_state.data['att']
-            conv = st.session_state.data['conv']
-            leads = st.session_state.data['leads']
-            render_kpis([
-                {'label': 'Attendees', 'value': f"{len(att):,}"},
-                {'label': 'Converted', 'value': f"{(att['Conv Status'] == 'Converted').sum():,}"},
-                {'label': 'Orders', 'value': f"{len(conv):,}"},
-                {'label': 'Leads', 'value': f"{len(leads):,}"},
-            ], cols=4)
+if load_btn:
+    if not (f_sem and f_conv and f_lead):
+        st.error("Upload all 3 files first.")
     else:
-        no_data('Please upload Seminar CSV, Conversion XLSX, and Leads XLSX.')
+        try:
+            st.session_state.master = process_all(f_sem.read(), f_conv.read(), f_lead.read())
+            st.success("Files loaded successfully.")
+        except Exception as e:
+            st.exception(e)
+            st.stop()
 
+if not st.session_state.master:
+    st.info("Upload the 3 files and click Load Data to continue.")
+    st.stop()
 
-if not st.session_state.loaded:
-    with tab_overview:
-        no_data()
-    with tab_seminar:
-        no_data()
-    with tab_leads:
-        no_data()
-    with tab_conversion:
-        no_data()
-    with tab_records:
-        no_data()
-else:
-    D = st.session_state.data
-    sem = D['sem']
-    att = D['att']
-    conv = D['conv']
-    leads = D['leads']
+D = st.session_state.master
+master = D["master"].copy()
 
-    with tab_overview:
-        conv_count = (att['Conv Status'] == 'Converted').sum()
-        conv_rate = (conv_count / len(att) * 100) if len(att) else 0
-        render_kpis([
-            {'label': 'Seminar Attendees', 'value': f'{len(att):,}'},
-            {'label': 'Converted', 'value': f'{conv_count:,}', 'delta': f'{conv_rate:.1f}% rate'},
-            {'label': 'Gross Revenue', 'value': fmt_inr(conv['total_amount'].sum())},
-            {'label': 'Collected', 'value': fmt_inr(conv['payment_received'].sum())},
-            {'label': 'Due', 'value': fmt_inr(conv['total_due'].sum())},
-            {'label': 'Total Leads', 'value': f'{len(leads):,}'},
-            {'label': 'Webinar Leads', 'value': f"{(leads['converted_from'] == 'Webinar').sum():,}"},
-            {'label': 'Locations', 'value': f"{att['Place'].nunique():,}"},
-        ], cols=4)
+# ==============================
+# UNIFIED FILTERS
+# ==============================
+st.markdown(
+    """
+    <div class="panel-title"><h3>Unified Filters</h3><p>All filtering lives here. Apply once, and every KPI, chart, and table updates together.</p></div>
+    """,
+    unsafe_allow_html=True,
+)
+with st.container(border=False):
+    c1, c2, c3, c4, c5 = st.columns(5)
+    seminar_dates = sorted([d for d in master["Seminar Date"].dropna().dt.date.unique()])
+    seminar_date_sel = c1.multiselect("Seminar Date", seminar_dates, format_func=lambda x: x.strftime("%d %b %Y"))
+    place_sel = c2.multiselect("Location", sorted(master["Place"].dropna().astype(str).unique()))
+    trainer_sel = c3.multiselect("Trainer", sorted(master["Trainer Norm"].dropna().astype(str).unique()))
+    session_sel = c4.multiselect("Session", sorted(master["Session"].dropna().astype(str).unique()))
+    conv_status_sel = c5.multiselect("Conversion Status", ["Converted After Seminar", "Not Converted After Seminar"])
 
-        col1, col2 = st.columns(2)
-        with col1:
-            section('Seminar funnel')
-            fig = go.Figure(go.Funnel(y=['Registered', 'Attended', 'Converted'], x=[len(sem), len(att), conv_count]))
-            fig.update_layout(**PLOT_BASE, height=320)
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        with col2:
-            section('Due status')
-            due_counts = att['Due Status'].value_counts()
-            plot_donut(due_counts.index, due_counts.values, height=320)
+    c6, c7, c8, c9, c10 = st.columns(5)
+    course_sel = c6.multiselect("Course", sorted([x for x in master["service_name"].dropna().astype(str).unique() if x and x != "nan"]))
+    due_sel = c7.multiselect("Due Filter", ["Due 0", "Has Due", "No Order"])
+    lead_origin_sel = c8.multiselect("Lead Origin", sorted([x for x in master["lead_origin"].dropna().astype(str).unique() if x and x != "nan"]))
+    lead_source_sel = c9.multiselect("Lead Source Name", sorted([x for x in master["lead_source_name"].dropna().astype(str).unique() if x and x != "nan"]))
+    payment_mode_sel = c10.multiselect("Payment Mode", sorted([x for x in master["payment_mode"].dropna().astype(str).unique() if x and x != "nan"]))
 
-        c3, c4 = st.columns(2)
-        with c3:
-            section('Monthly revenue')
-            monthly = conv.groupby('month', dropna=False).agg(Orders=('_id', 'count'), Revenue=('total_amount', 'sum')).reset_index()
-            monthly = monthly[monthly['month'].notna() & (monthly['month'] != 'NaT')]
-            if not monthly.empty:
-                fig = make_subplots(specs=[[{'secondary_y': True}]])
-                fig.add_trace(go.Bar(x=monthly['month'], y=monthly['Orders'], name='Orders', marker_color=BLUE), secondary_y=False)
-                fig.add_trace(go.Scatter(x=monthly['month'], y=monthly['Revenue'], name='Revenue', mode='lines+markers', line=dict(color=GREEN, width=3)), secondary_y=True)
-                fig.update_layout(**PLOT_BASE, height=320)
-                fig.update_yaxes(gridcolor=GRID, secondary_y=False)
-                fig.update_yaxes(showgrid=False, secondary_y=True)
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            else:
-                st.info('No monthly revenue data available.')
-        with c4:
-            section('Lead source mix')
-            src = leads['converted_from'].value_counts()
-            plot_donut(src.index, src.values, height=320)
+    c11, c12, c13, c14, c15 = st.columns(5)
+    sales_sel = c11.multiselect("Sales Rep", sorted([x for x in master["sales_rep_name"].dropna().astype(str).unique() if x and x != "nan"]))
+    status_sel = c12.multiselect("Order Status", sorted([x for x in master["status"].dropna().astype(str).unique() if x and x != "nan"]))
+    only_after = c13.selectbox("Order Timing", ["Only orders after seminar", "Show all attendee matches"], index=0)
+    payment_min = c14.number_input("Min Paid", min_value=0.0, value=0.0, step=1000.0)
+    payment_max = c15.number_input("Max Paid", min_value=0.0, value=float(max(master["payment_received"].fillna(0).max(), 0)), step=1000.0)
 
-    with tab_seminar:
-        filt = apply_att_filters(att, 'seminar')
-        converted = (filt['Conv Status'] == 'Converted').sum()
-        rate = (converted / len(filt) * 100) if len(filt) else 0
-        render_kpis([
-            {'label': 'Attended', 'value': f'{len(filt):,}'},
-            {'label': 'Converted', 'value': f'{converted:,}', 'delta': f'{rate:.1f}% rate'},
-            {'label': 'Order Revenue', 'value': fmt_inr(filt['total_amount'].sum())},
-            {'label': 'Collected', 'value': fmt_inr(filt['payment_received'].sum())},
-        ], cols=4)
+    c16, c17, c18 = st.columns([1.2, 1.2, 3.6])
+    search_text = c16.text_input("Student Search", placeholder="Name / mobile / course")
+    due_zero_only = c17.checkbox("Only Due = 0", value=False)
+    st.caption("Tip: use Seminar Date + Course + Due 0 + Lead Origin for the exact analysis flow you described.")
 
-        c1, c2 = st.columns(2)
-        with c1:
-            section('Location performance')
-            loc = filt.groupby('Place').agg(Attended=('NAME', 'count'), Converted=('Conv Status', lambda s: (s == 'Converted').sum())).reset_index()
-            plot_bar(loc.sort_values('Attended', ascending=False).head(15), 'Place', 'Attended', height=340)
-        with c2:
-            section('Trainer conversion')
-            tr = filt.groupby('Trainer Norm').agg(Attended=('NAME', 'count'), Converted=('Conv Status', lambda s: (s == 'Converted').sum())).reset_index()
-            tr['Rate'] = (tr['Converted'] / tr['Attended'] * 100).fillna(0)
-            plot_bar(tr.sort_values('Rate', ascending=True).tail(15), 'Rate', 'Trainer Norm', horizontal=True, height=340)
+filtered = master.copy()
+if seminar_date_sel:
+    filtered = filtered[filtered["Seminar Date"].dt.date.isin(seminar_date_sel)]
+if place_sel:
+    filtered = filtered[filtered["Place"].isin(place_sel)]
+if trainer_sel:
+    filtered = filtered[filtered["Trainer Norm"].isin(trainer_sel)]
+if session_sel:
+    filtered = filtered[filtered["Session"].isin(session_sel)]
+if conv_status_sel:
+    filtered = filtered[filtered["conversion_status"].isin(conv_status_sel)]
+if course_sel:
+    filtered = filtered[filtered["service_name"].isin(course_sel)]
+if lead_origin_sel:
+    filtered = filtered[filtered["lead_origin"].isin(lead_origin_sel)]
+if lead_source_sel:
+    filtered = filtered[filtered["lead_source_name"].isin(lead_source_sel)]
+if payment_mode_sel:
+    filtered = filtered[filtered["payment_mode"].isin(payment_mode_sel)]
+if sales_sel:
+    filtered = filtered[filtered["sales_rep_name"].isin(sales_sel)]
+if status_sel:
+    filtered = filtered[filtered["status"].isin(status_sel)]
+if only_after == "Only orders after seminar":
+    filtered = filtered[filtered["after_seminar"].fillna(False) | filtered["order_date"].isna()]
+filtered = filtered[filtered["payment_received"].fillna(0).between(payment_min, payment_max)]
+if due_zero_only:
+    filtered = filtered[filtered["total_due"].fillna(0).le(0)]
+if due_sel:
+    due_mask = pd.Series(False, index=filtered.index)
+    if "Due 0" in due_sel:
+        due_mask = due_mask | (filtered["total_due"].fillna(0).le(0) & filtered["after_seminar"].fillna(False))
+    if "Has Due" in due_sel:
+        due_mask = due_mask | (filtered["total_due"].fillna(0).gt(0) & filtered["after_seminar"].fillna(False))
+    if "No Order" in due_sel:
+        due_mask = due_mask | filtered["order_date"].isna()
+    filtered = filtered[due_mask]
+if search_text:
+    q = search_text.strip().lower()
+    mask = (
+        filtered["NAME"].astype(str).str.lower().str.contains(q, na=False)
+        | filtered["mobile_clean"].astype(str).str.contains(q, na=False)
+        | filtered["service_name"].astype(str).str.lower().str.contains(q, na=False)
+        | filtered["lead_source_name"].astype(str).str.lower().str.contains(q, na=False)
+    )
+    filtered = filtered[mask]
 
-        c3, c4 = st.columns(2)
-        with c3:
-            section('Session split')
-            ses = filt['Session'].value_counts()
-            plot_donut(ses.index, ses.values, height=300)
-        with c4:
-            section('Payment mode at seminar')
-            pm = filt['Mode of Payment'].fillna('Unknown').astype(str).value_counts()
-            plot_donut(pm.index, pm.values, height=300)
+# ==============================
+# KPI SUMMARY
+# ==============================
+attendee_count = len(filtered)
+converted_after = int(filtered["after_seminar"].fillna(False).sum())
+not_converted = attendee_count - converted_after
+revenue = filtered.loc[filtered["after_seminar"].fillna(False), "total_amount"].fillna(0).sum()
+paid = filtered.loc[filtered["after_seminar"].fillna(False), "payment_received"].fillna(0).sum()
+due = filtered.loc[filtered["after_seminar"].fillna(False), "total_due"].fillna(0).sum()
+due_zero = int((filtered["after_seminar"].fillna(False) & filtered["total_due"].fillna(0).le(0)).sum())
+webinar = int((filtered["lead_origin"].astype(str).str.lower() == "webinar").sum())
+non_webinar = int((filtered["lead_origin"].astype(str).str.lower() == "non webinar").sum())
+conv_rate = (converted_after / attendee_count * 100) if attendee_count else 0
 
-    with tab_leads:
-        with st.expander('Filters', expanded=True):
-            l1, l2, l3, l4 = st.columns(4)
-            src_sel = l1.multiselect('Converted from', sorted(leads['converted_from'].unique()), key='leads_src')
-            ls_sel = l2.multiselect('Lead source', sorted(leads['leadsource'].unique()), key='leads_ls')
-            owner_sel = l3.multiselect('Lead owner', sorted(leads['leadownername'].unique()), key='leads_owner')
-            attempt_sel = l4.selectbox('Attempted?', ['All', 'Attempted', 'Unattempted'], key='leads_attempt')
-        ld = leads.copy()
-        if src_sel:
-            ld = ld[ld['converted_from'].isin(src_sel)]
-        if ls_sel:
-            ld = ld[ld['leadsource'].isin(ls_sel)]
-        if owner_sel:
-            ld = ld[ld['leadownername'].isin(owner_sel)]
-        if attempt_sel != 'All':
-            ld = ld[ld['Attempted/Unattempted'] == attempt_sel]
+st.markdown('<div class="panel">', unsafe_allow_html=True)
+draw_kpis(
+    [
+        ("Offline Attendees", f"{attendee_count:,}", "Filtered attendee rows", "info"),
+        ("Converted After Seminar", f"{converted_after:,}", f"{conv_rate:.1f}% conversion rate", "success"),
+        ("Not Converted", f"{not_converted:,}", "Attended but no post-seminar order", "danger"),
+        ("Paid Amount", fmt_currency(paid), "Collected from converted students", "teal"),
+        ("Total Due", fmt_currency(due), "Outstanding after conversion", "warning"),
+        ("Due 0 Students", f"{due_zero:,}", "Converted students with zero due", "purple"),
+        ("Webinar Origin", f"{webinar:,}", "Matched in leads as webinar", "teal"),
+        ("Non-Webinar Origin", f"{non_webinar:,}", "Matched in leads as non-webinar", "purple"),
+    ],
+    cols=4,
+)
+st.markdown('</div>', unsafe_allow_html=True)
 
-        lead_conv = ld['Is Converted'].sum()
-        lead_rate = (lead_conv / len(ld) * 100) if len(ld) else 0
-        render_kpis([
-            {'label': 'Total Leads', 'value': f'{len(ld):,}'},
-            {'label': 'Converted', 'value': f'{lead_conv:,}', 'delta': f'{lead_rate:.1f}% rate'},
-            {'label': 'Campaigns', 'value': f"{ld['campaign_name'].nunique():,}"},
-            {'label': 'Owners', 'value': f"{ld['leadownername'].nunique():,}"},
-        ], cols=4)
+# ==============================
+# TABS
+# ==============================
+t1, t2, t3 = st.tabs(["Overview", "Course & Lead Intelligence", "Student Records"])
 
-        c1, c2 = st.columns(2)
-        with c1:
-            section('Lead stage pipeline')
-            stage = ld['stage_name'].value_counts().head(12)
-            plot_bar(stage.rename_axis('Stage').reset_index(name='Count'), 'Stage', 'Count', height=340)
-        with c2:
-            section('Attempted vs unattempted')
-            attm = ld['Attempted/Unattempted'].value_counts()
-            plot_donut(attm.index, attm.values, height=340)
+with t1:
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Course-wise Paid Amount</h3><p>Which course collected how much after seminar attendance.</p></div>', unsafe_allow_html=True)
+        course_df = (
+            filtered[filtered["after_seminar"].fillna(False)]
+            .groupby("service_name", dropna=False)
+            .agg(
+                Students=("mobile_clean", "count"),
+                Paid=("payment_received", "sum"),
+                Due=("total_due", "sum"),
+                Revenue=("total_amount", "sum"),
+            )
+            .reset_index()
+            .sort_values("Paid", ascending=False)
+        )
+        course_df["service_name"] = course_df["service_name"].replace("", "Unknown")
+        safe_plot_bar(course_df.head(12), "service_name", "Paid", height=360, horizontal=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        c3, c4 = st.columns(2)
-        with c3:
-            section('Top campaigns')
-            camp = ld['campaign_name'].value_counts().head(15)
-            plot_bar(camp.rename_axis('Campaign').reset_index(name='Count'), 'Count', 'Campaign', horizontal=True, height=360)
-        with c4:
-            section('Lead owners')
-            own = ld['leadownername'].value_counts().head(15)
-            plot_bar(own.rename_axis('Owner').reset_index(name='Count'), 'Count', 'Owner', horizontal=True, height=360)
+    with c2:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Seminar Date vs Conversion</h3><p>How each offline seminar date performed post-event.</p></div>', unsafe_allow_html=True)
+        trend = (
+            filtered.groupby(filtered["Seminar Date"].dt.strftime("%d %b %Y"), dropna=False)
+            .agg(Attendees=("mobile_clean", "count"), Converted=("after_seminar", "sum"))
+            .reset_index()
+            .rename(columns={"Seminar Date": "Seminar"})
+        )
+        trend.columns = ["Seminar", "Attendees", "Converted"]
+        safe_plot_bar(trend, "Seminar", "Converted", height=360)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab_conversion:
-        with st.expander('Filters', expanded=True):
-            c1, c2, c3, c4 = st.columns(4)
-            st_sel = c1.multiselect('Status', sorted(conv['status'].astype(str).unique()), key='conv_st')
-            sv_sel = c2.multiselect('Service', sorted(conv['service_name'].astype(str).unique()), key='conv_sv')
-            rep_sel = c3.multiselect('Sales rep', sorted(conv['sales_rep_name'].astype(str).unique()), key='conv_rep')
-            pm_sel = c4.multiselect('Payment mode', sorted(conv['PM Label'].astype(str).unique()), key='conv_pm')
-        cv = conv.copy()
-        if st_sel:
-            cv = cv[cv['status'].isin(st_sel)]
-        if sv_sel:
-            cv = cv[cv['service_name'].isin(sv_sel)]
-        if rep_sel:
-            cv = cv[cv['sales_rep_name'].isin(rep_sel)]
-        if pm_sel:
-            cv = cv[cv['PM Label'].isin(pm_sel)]
+    c3, c4 = st.columns(2)
+    with c3:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Lead Source Name</h3><p>Source mapped for filtered attendee records.</p></div>', unsafe_allow_html=True)
+        source_df = (
+            filtered["lead_source_name"].fillna("Unknown").replace("", "Unknown").value_counts()
+            .rename_axis("Lead Source")
+            .reset_index(name="Count")
+            .head(15)
+        )
+        safe_plot_bar(source_df, "Lead Source", "Count", height=330, horizontal=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        render_kpis([
-            {'label': 'Orders', 'value': f'{len(cv):,}'},
-            {'label': 'Revenue', 'value': fmt_inr(cv['total_amount'].sum())},
-            {'label': 'Collected', 'value': fmt_inr(cv['payment_received'].sum())},
-            {'label': 'Due', 'value': fmt_inr(cv['total_due'].sum())},
-            {'label': 'Refunded', 'value': f"{int(cv['is_refunded'].sum()):,}"},
-            {'label': 'Short Closed', 'value': f"{int(cv['is_shortClosed'].sum()):,}"},
-            {'label': 'Services', 'value': f"{cv['service_name'].nunique():,}"},
-            {'label': 'Sales Reps', 'value': f"{cv['sales_rep_name'].nunique():,}"},
-        ], cols=4)
+    with c4:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Due Bucket</h3><p>Converted students with zero due vs pending due.</p></div>', unsafe_allow_html=True)
+        bucket_df = pd.DataFrame(
+            {
+                "Bucket": ["Due 0", "Has Due", "No Order"],
+                "Count": [
+                    int((filtered["after_seminar"].fillna(False) & filtered["total_due"].fillna(0).le(0)).sum()),
+                    int((filtered["after_seminar"].fillna(False) & filtered["total_due"].fillna(0).gt(0)).sum()),
+                    int(filtered["order_date"].isna().sum()),
+                ],
+            }
+        )
+        safe_plot_bar(bucket_df, "Bucket", "Count", height=330)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        c1, c2 = st.columns(2)
-        with c1:
-            section('Revenue by month')
-            month_df = cv.groupby('month', dropna=False).agg(Revenue=('total_amount', 'sum')).reset_index()
-            month_df = month_df[month_df['month'].notna() & (month_df['month'] != 'NaT')]
-            plot_bar(month_df, 'month', 'Revenue', height=320)
-        with c2:
-            section('Order status')
-            st_counts = cv['status'].value_counts()
-            plot_donut(st_counts.index, st_counts.values, height=320)
+with t2:
+    c5, c6 = st.columns(2)
+    with c5:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Webinar vs Non-Webinar</h3><p>Lead origin for the filtered attendee base.</p></div>', unsafe_allow_html=True)
+        origin_df = (
+            filtered["lead_origin"].fillna("Unknown").replace("", "Unknown").value_counts()
+            .rename_axis("Lead Origin")
+            .reset_index(name="Count")
+        )
+        safe_plot_bar(origin_df, "Lead Origin", "Count", height=340)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        c3, c4 = st.columns(2)
-        with c3:
-            section('Top services')
-            svc = cv.groupby('service_name').agg(Orders=('_id', 'count'), Revenue=('total_amount', 'sum')).reset_index().sort_values('Orders', ascending=False).head(15)
-            plot_bar(svc, 'Orders', 'service_name', horizontal=True, height=360)
-        with c4:
-            section('Top sales reps')
-            reps = cv.groupby('sales_rep_name').agg(Orders=('_id', 'count'), Revenue=('total_amount', 'sum')).reset_index().sort_values('Revenue', ascending=False).head(15)
-            plot_bar(reps, 'Revenue', 'sales_rep_name', horizontal=True, height=360)
+    with c6:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Course-wise Due 0</h3><p>Which course has students fully paid after seminar conversion.</p></div>', unsafe_allow_html=True)
+        due0_df = (
+            filtered[filtered["after_seminar"].fillna(False) & filtered["total_due"].fillna(0).le(0)]
+            .groupby("service_name", dropna=False)
+            .size()
+            .rename_axis("Course")
+            .reset_index(name="Students")
+            .sort_values("Students", ascending=False)
+        )
+        due0_df["Course"] = due0_df["Course"].replace("", "Unknown")
+        safe_plot_bar(due0_df.head(12), "Course", "Students", height=340, horizontal=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab_records:
-        source = st.radio('View records from', ['Seminar Attendance', 'Leads', 'Conversion Orders'], horizontal=True)
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title"><h3>Lead Intelligence Table</h3><p>Cross-check attendee → conversion → lead source path in one view.</p></div>', unsafe_allow_html=True)
+    lead_table = filtered[
+        [
+            "NAME", "mobile_clean", "Seminar Date", "Place", "Trainer Norm", "service_name",
+            "payment_received", "total_due", "order_date", "conversion_status", "lead_origin",
+            "lead_source_name", "leadstatus", "stage_name", "leadownername"
+        ]
+    ].copy()
+    lead_table = lead_table.rename(
+        columns={
+            "NAME": "Student Name",
+            "mobile_clean": "Mobile",
+            "Seminar Date": "Seminar Date",
+            "Trainer Norm": "Trainer",
+            "service_name": "Course",
+            "payment_received": "Paid",
+            "total_due": "Due",
+            "order_date": "Order Date",
+            "lead_origin": "Webinar/Non-Webinar",
+            "lead_source_name": "Lead Source Name",
+            "leadstatus": "Lead Status",
+            "stage_name": "Stage",
+            "leadownername": "Lead Owner",
+        }
+    )
+    if "Seminar Date" in lead_table.columns:
+        lead_table["Seminar Date"] = pd.to_datetime(lead_table["Seminar Date"], errors="coerce").dt.strftime("%d %b %Y")
+    if "Order Date" in lead_table.columns:
+        lead_table["Order Date"] = pd.to_datetime(lead_table["Order Date"], errors="coerce").dt.strftime("%d %b %Y")
+    st.dataframe(lead_table, use_container_width=True, hide_index=True, height=420)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        def to_excel_bytes(df):
-            buf = io.BytesIO()
-            df.to_excel(buf, index=False)
-            return buf.getvalue()
+with t3:
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title"><h3>Student-level Records</h3><p>Review each attendee row with seminar, conversion, course, paid, due, and lead mapping.</p></div>', unsafe_allow_html=True)
+    rec = filtered.copy()
+    rec["Seminar Date"] = pd.to_datetime(rec["Seminar Date"], errors="coerce").dt.strftime("%d %b %Y")
+    rec["order_date"] = pd.to_datetime(rec["order_date"], errors="coerce").dt.strftime("%d %b %Y")
+    show_cols = [
+        "NAME", "mobile_clean", "Place", "Seminar Date", "Session", "Trainer Norm",
+        "conversion_status", "order_date", "service_name", "payment_received", "total_due",
+        "status", "sales_rep_name", "payment_mode", "lead_origin", "lead_source_name",
+        "leadstatus", "stage_name"
+    ]
+    show_cols = [c for c in show_cols if c in rec.columns]
+    display_df = rec[show_cols].rename(
+        columns={
+            "NAME": "Student Name",
+            "mobile_clean": "Mobile",
+            "Trainer Norm": "Trainer",
+            "order_date": "Order Date",
+            "service_name": "Course",
+            "payment_received": "Paid",
+            "total_due": "Due",
+            "status": "Order Status",
+            "sales_rep_name": "Sales Rep",
+            "payment_mode": "Payment Mode",
+            "lead_origin": "Webinar/Non-Webinar",
+            "lead_source_name": "Lead Source Name",
+            "leadstatus": "Lead Status",
+            "stage_name": "Lead Stage",
+        }
+    )
+    st.dataframe(display_df, use_container_width=True, hide_index=True, height=520)
 
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-        if source == 'Seminar Attendance':
-            df = att.copy()
-            show_cols = [c for c in [
-                'NAME', 'Mobile', 'Place', 'Seminar Date', 'Session', 'Trainer Norm', 'Conv Status',
-                'Amount Paid', 'Mode of Payment', 'service_name', 'total_amount', 'payment_received',
-                'total_due', 'Due Status', 'status', 'sales_rep_name', 'trainer_name', 'converted_from',
-                'leadsource', 'Remarks'
-            ] if c in df.columns]
-            st.dataframe(df[show_cols], use_container_width=True, height=480, hide_index=True)
-            st.download_button('Download seminar records', data=to_excel_bytes(df[show_cols]), file_name=f'seminar_records_{timestamp}.xlsx')
-        elif source == 'Leads':
-            df = leads.copy()
-            show_cols = [c for c in [
-                'name', 'phone', 'email', 'leaddate', 'converted_from', 'leadsource', 'campaign_name',
-                'leadstatus', 'stage_name', 'leadownername', 'state', 'Attempted/Unattempted', 'servicename', 'remarks'
-            ] if c in df.columns]
-            st.dataframe(df[show_cols], use_container_width=True, height=480, hide_index=True)
-            st.download_button('Download lead records', data=to_excel_bytes(df[show_cols]), file_name=f'lead_records_{timestamp}.xlsx')
-        else:
-            df = conv.copy()
-            show_cols = [c for c in [
-                'student_name', 'phone', 'email', 'order_date', 'service_name', 'total_amount',
-                'payment_received', 'total_due', 'status', 'PM Label', 'sales_rep_name', 'trainer_name', 'batch_date'
-            ] if c in df.columns]
-            st.dataframe(df[show_cols], use_container_width=True, height=480, hide_index=True)
-            st.download_button('Download conversion records', data=to_excel_bytes(df[show_cols]), file_name=f'conversion_records_{timestamp}.xlsx')
+    export_bytes = io.BytesIO()
+    rec.to_excel(export_bytes, index=False)
+    st.download_button(
+        "Download filtered records",
+        data=export_bytes.getvalue(),
+        file_name=f"offline_seminar_filtered_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=False,
+        type="primary",
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
