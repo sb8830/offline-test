@@ -272,6 +272,27 @@ def apply_excel_style_filters(df, columns, key_prefix="tbl"):
     return filtered
 
 
+def apply_first_row_filters(df, key_prefix="grid"):
+    if df.empty:
+        return df
+    st.caption("Use the filter row below like Excel: type text to match a column. Dates can be typed as part of the displayed value, for example 22 Mar 2026.")
+    filter_row = pd.DataFrame([{c: "" for c in df.columns}])
+    edited = st.data_editor(
+        filter_row,
+        key=f"{key_prefix}_filterrow",
+        num_rows="fixed",
+        hide_index=True,
+        use_container_width=True,
+        height=80,
+    )
+    out = df.copy()
+    for col in df.columns:
+        value = str(edited.iloc[0][col]).strip() if col in edited.columns else ""
+        if value and value.lower() != "nan":
+            out = out[out[col].astype(str).str.contains(value, case=False, na=False)]
+    return out
+
+
 def render_login():
     st.markdown(
         """
@@ -475,7 +496,7 @@ st.markdown(
         <div class="chip">All filters on one page</div>
         <div class="chip">Course share per seminar</div>
         <div class="chip">Combo-course cross-sell</div>
-        <div class="chip">Lead table all-column filters</div>
+        <div class="chip">Lead table first-row filter</div>
         <div class="chip">{datetime.now().strftime('%d %b %Y %H:%M')}</div>
       </div>
     </div>
@@ -540,8 +561,8 @@ payment_max = c15.number_input("Max Paid", min_value=0.0, value=payment_max_defa
 c16, c17, c18, c19 = st.columns([1.2, 1.2, 1.2, 2.4])
 search_text = c16.text_input("Student Search", placeholder="Name / mobile / course")
 due_zero_only = c17.checkbox("Only Due = 0", value=False)
-seminar_share_basis = c18.selectbox("Seminar Share Basis", ["Paid Amount", "Student Count"])
-combo_scope = c19.selectbox("Combo Cross-Sell Scope", ["All students in conversion list", "Only filtered attendee phones"])
+seminar_share_basis = c18.selectbox("Course Share Metric", ["Student Count"], index=0)
+combo_scope = c19.selectbox("Combo Cross-Sell Scope", ["Filtered attendee selection only"], index=0)
 
 filtered = master.copy()
 if seminar_date_sel:
@@ -622,16 +643,17 @@ with t1:
     a1, a2 = st.columns(2)
     with a1:
         st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title"><h3>Course-wise Paid Amount</h3><p>Which course collected how much after seminar attendance.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Course-wise Student Count</h3><p>How many filtered attendees purchased each primary post-seminar course. Paid and due are shown in the table below the chart.</p></div>', unsafe_allow_html=True)
         course_df = (
             filtered[filtered["after_seminar"].fillna(False)]
             .groupby("service_name", dropna=False)
-            .agg(Students=("mobile_clean", "count"), Paid=("payment_received", "sum"), Due=("total_due", "sum"), Revenue=("total_amount", "sum"))
+            .agg(Students=("mobile_clean", "nunique"), Orders=("mobile_clean", "count"), Paid=("payment_received", "sum"), Due=("total_due", "sum"), Revenue=("total_amount", "sum"))
             .reset_index()
-            .sort_values("Paid", ascending=False)
+            .sort_values(["Students", "Paid"], ascending=[False, False])
         )
         course_df["service_name"] = course_df["service_name"].replace("", "Unknown")
-        safe_plot_bar(course_df.head(12), "service_name", "Paid", height=360, horizontal=True)
+        safe_plot_bar(course_df.head(12), "service_name", "Students", height=360, horizontal=True)
+        st.dataframe(course_df, use_container_width=True, hide_index=True, height=220)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with a2:
@@ -650,18 +672,15 @@ with t1:
     b1, b2 = st.columns(2)
     with b1:
         st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.markdown('<div class="panel-title"><h3>Course Share for Selected Seminar</h3><p>Share by course for the selected seminar date(s), based on paid amount or student count.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel-title"><h3>Course Share for Selected Seminar</h3><p>Share by student count for the selected seminar date(s).</p></div>', unsafe_allow_html=True)
         seminar_share = filtered[filtered["after_seminar"].fillna(False)].copy()
         if not seminar_share.empty:
             seminar_share["SeminarLabel"] = seminar_share["Seminar Date"].dt.strftime("%d %b %Y")
-            if seminar_share_basis == "Paid Amount":
-                share_df = seminar_share.groupby(["SeminarLabel", "service_name"], dropna=False)["payment_received"].sum().reset_index(name="Value")
-            else:
-                share_df = seminar_share.groupby(["SeminarLabel", "service_name"], dropna=False).size().reset_index(name="Value")
+            share_df = seminar_share.groupby(["SeminarLabel", "service_name"], dropna=False)["mobile_clean"].nunique().reset_index(name="Students")
             share_df["service_name"] = share_df["service_name"].replace("", "Unknown")
-            share_df["Share %"] = share_df.groupby("SeminarLabel")["Value"].transform(lambda s: (s / s.sum() * 100).round(1) if s.sum() else 0)
-            safe_plot_bar(share_df.sort_values("Value", ascending=False).head(20), "service_name", "Share %", color="SeminarLabel", height=360, horizontal=True)
-            st.dataframe(share_df.sort_values(["SeminarLabel", "Value"], ascending=[True, False]), use_container_width=True, hide_index=True, height=220)
+            share_df["Share %"] = share_df.groupby("SeminarLabel")["Students"].transform(lambda s: (s / s.sum() * 100).round(1) if s.sum() else 0)
+            safe_plot_bar(share_df.sort_values(["Students", "Share %"], ascending=[False, False]).head(20), "service_name", "Students", color="SeminarLabel", height=360, horizontal=True)
+            st.dataframe(share_df.sort_values(["SeminarLabel", "Students"], ascending=[True, False]), use_container_width=True, hide_index=True, height=220)
         else:
             st.info("No converted post-seminar rows available for course-share analysis.")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -696,40 +715,45 @@ with t2:
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="panel">', unsafe_allow_html=True)
-    st.markdown('<div class="panel-title"><h3>Power Of Trading & Investing Combo Course → Other Course Buyers</h3><p>Students who first took the combo course and later purchased some other course.</p></div>', unsafe_allow_html=True)
-    combo_base = D["combo_base"].copy()
-    combo_other = D["combo_other_orders"].copy()
-    if combo_scope == "Only filtered attendee phones":
-        allowed_phones = set(filtered["mobile_clean"].dropna().astype(str))
-        combo_base = combo_base[combo_base["phone_clean"].astype(str).isin(allowed_phones)]
-        combo_other = combo_other[combo_other["phone_clean"].astype(str).isin(allowed_phones)]
-    combo_students = int(combo_base["phone_clean"].nunique())
-    combo_cross_sell_students = int(combo_other["phone_clean"].nunique())
+    st.markdown('<div class="panel-title"><h3>Power Of Trading & Investing Combo Course → Other Course Buyers</h3><p>Based on the same unified attendee filters: location, seminar date, trainer, due, course, lead source, and all other selections above.</p></div>', unsafe_allow_html=True)
+    combo_pattern = "power of trading & investing combo course"
+    combo_base = filtered[
+        filtered["after_seminar"].fillna(False)
+        & filtered["service_name_norm"].astype(str).str.contains(combo_pattern, case=False, na=False)
+    ].copy()
+    combo_other = D["attendee_later_orders"].copy()
+    if not combo_other.empty and not combo_base.empty:
+        allowed_pairs = combo_base[["mobile_clean", "Seminar Date"]].drop_duplicates()
+        combo_other = combo_other.merge(allowed_pairs, on=["mobile_clean", "Seminar Date"], how="inner")
+    else:
+        combo_other = combo_other.iloc[0:0].copy()
+    combo_students = int(combo_base["mobile_clean"].nunique())
+    combo_cross_sell_students = int(combo_other["mobile_clean"].nunique())
     combo_cross_sell_orders = int(len(combo_other))
     cross_rate = (combo_cross_sell_students / combo_students * 100) if combo_students else 0
     draw_kpis(
         [
-            ("Combo Buyers", f"{combo_students:,}", "Students with combo course", "info"),
+            ("Combo Buyers", f"{combo_students:,}", "Filtered attendees whose primary post-seminar course is combo", "info"),
             ("Bought Other Course", f"{combo_cross_sell_students:,}", f"{cross_rate:.1f}% of combo buyers", "success"),
-            ("Other Course Orders", f"{combo_cross_sell_orders:,}", "Distinct phone+course rows", "purple"),
+            ("Other Course Orders", f"{combo_cross_sell_orders:,}", "Later courses after primary combo order", "purple"),
             ("Extra Revenue", fmt_currency(combo_other["total_amount"].sum() if not combo_other.empty else 0), "Revenue from later non-combo courses", "teal"),
         ],
         cols=4,
     )
     if not combo_other.empty:
-        other_course_df = combo_other.groupby("service_name", dropna=False).agg(Students=("phone_clean", "nunique"), Orders=("phone_clean", "count"), Paid=("payment_received", "sum")).reset_index().sort_values("Students", ascending=False)
+        other_course_df = combo_other.groupby("service_name", dropna=False).agg(Students=("mobile_clean", "nunique"), Orders=("mobile_clean", "count"), Paid=("payment_received", "sum")).reset_index().sort_values(["Students", "Paid"], ascending=[False, False])
         other_course_df["service_name"] = other_course_df["service_name"].replace("", "Unknown")
         x1, x2 = st.columns([1.1, 1.2])
         with x1:
             safe_plot_bar(other_course_df.head(12), "service_name", "Students", height=340, horizontal=True)
         with x2:
-            combo_other_show = combo_other[["phone_clean", "combo_order_date", "order_date", "service_name", "payment_received", "total_due", "status", "sales_rep_name"]].copy()
-            combo_other_show = combo_other_show.rename(columns={"phone_clean": "Mobile", "combo_order_date": "Combo Order Date", "order_date": "Other Course Order Date", "service_name": "Other Course", "payment_received": "Paid", "total_due": "Due", "status": "Order Status", "sales_rep_name": "Sales Rep"})
-            combo_other_show["Combo Order Date"] = pd.to_datetime(combo_other_show["Combo Order Date"], errors="coerce").dt.strftime("%d %b %Y")
+            combo_other_show = combo_other[["NAME", "mobile_clean", "Seminar Date", "order_date", "service_name", "payment_received", "total_due", "status", "sales_rep_name"]].copy()
+            combo_other_show = combo_other_show.rename(columns={"NAME": "Student Name", "mobile_clean": "Mobile", "Seminar Date": "Seminar Date", "order_date": "Other Course Order Date", "service_name": "Other Course", "payment_received": "Paid", "total_due": "Due", "status": "Order Status", "sales_rep_name": "Sales Rep"})
+            combo_other_show["Seminar Date"] = pd.to_datetime(combo_other_show["Seminar Date"], errors="coerce").dt.strftime("%d %b %Y")
             combo_other_show["Other Course Order Date"] = pd.to_datetime(combo_other_show["Other Course Order Date"], errors="coerce").dt.strftime("%d %b %Y")
             st.dataframe(combo_other_show, use_container_width=True, hide_index=True, height=340)
     else:
-        st.info("No later non-combo course purchase found for the selected scope.")
+        st.info("No later non-combo course purchase found for the current unified filter selection.")
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="panel">', unsafe_allow_html=True)
@@ -748,14 +772,13 @@ with t2:
             show_later = show_later.rename(columns={"NAME": "Student Name", "mobile_clean": "Mobile", "service_name": "Other Course", "order_date": "Other Course Order Date", "payment_received": "Paid", "total_due": "Due", "status": "Order Status"})
             show_later["Seminar Date"] = pd.to_datetime(show_later["Seminar Date"], errors="coerce").dt.strftime("%d %b %Y")
             show_later["Other Course Order Date"] = pd.to_datetime(show_later["Other Course Order Date"], errors="coerce").dt.strftime("%d %b %Y")
-            show_later = apply_excel_style_filters(show_later, list(show_later.columns), key_prefix="latercourses")
             st.dataframe(show_later, use_container_width=True, hide_index=True, height=340)
     else:
         st.info("No additional post-seminar courses found beyond the preferred primary order.")
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="panel">', unsafe_allow_html=True)
-    st.markdown('<div class="panel-title"><h3>Lead Intelligence Table</h3><p>Cross-check attendee → conversion → lead source path. Every displayed column now has its own filter box.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title"><h3>Lead Intelligence Table</h3><p>Cross-check attendee → conversion → lead source path. Use the editable first row just below as the filter row for the original table.</p></div>', unsafe_allow_html=True)
     lead_columns = [
         "NAME", "mobile_clean", "Seminar Date", "Place", "Session", "Trainer Norm", "service_name",
         "payment_received", "total_due", "order_date", "conversion_status", "lead_origin",
@@ -791,8 +814,9 @@ with t2:
     })
     lead_table["Seminar Date"] = pd.to_datetime(lead_table["Seminar Date"], errors="coerce").dt.strftime("%d %b %Y")
     lead_table["Order Date"] = pd.to_datetime(lead_table["Order Date"], errors="coerce").dt.strftime("%d %b %Y")
-    filtered_lead_table = apply_excel_style_filters(lead_table, list(lead_table.columns), key_prefix="leadtable")
+    filtered_lead_table = apply_first_row_filters(lead_table, key_prefix="leadtable")
     st.dataframe(filtered_lead_table, use_container_width=True, hide_index=True, height=460)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with t3:
