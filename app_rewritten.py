@@ -246,18 +246,29 @@ def safe_plot_bar(df, x, y, color=None, height=320, horizontal=False, title=""):
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
-def apply_text_filters(df, columns, key_prefix="tbl"):
+def apply_excel_style_filters(df, columns, key_prefix="tbl"):
     if df.empty:
         return df
-    st.markdown('<div class="panel-title"><h3>Table Filters</h3><p>Filter any displayed column using contains-match search.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title"><h3>Table Filters</h3><p>Excel-style filters: choose exact values from dropdowns for low-cardinality columns, and use text contains filters for high-cardinality columns.</p></div>', unsafe_allow_html=True)
     filtered = df.copy()
-    rows = [columns[i:i + 4] for i in range(0, len(columns), 4)]
-    for ridx, row_cols in enumerate(rows):
-        ui_cols = st.columns(len(row_cols))
-        for cidx, col in enumerate(row_cols):
-            q = ui_cols[cidx].text_input(col, key=f"{key_prefix}_{ridx}_{cidx}", placeholder=f"Filter {col}")
-            if q:
-                filtered = filtered[filtered[col].astype(str).str.contains(q, case=False, na=False)]
+    with st.expander("Open column filters", expanded=True):
+        rows = [columns[i:i + 4] for i in range(0, len(columns), 4)]
+        for ridx, row_cols in enumerate(rows):
+            ui_cols = st.columns(len(row_cols))
+            for cidx, col in enumerate(row_cols):
+                series = filtered[col].copy()
+                series = series.where(series.notna(), "")
+                series_str = series.astype(str).str.strip()
+                uniq = [v for v in sorted(series_str.replace("nan", "").unique().tolist()) if v != ""]
+                widget_key = f"{key_prefix}_{ridx}_{cidx}"
+                if len(uniq) and len(uniq) <= 50:
+                    selected = ui_cols[cidx].multiselect(col, uniq, key=widget_key)
+                    if selected:
+                        filtered = filtered[series_str.isin(selected)]
+                else:
+                    q = ui_cols[cidx].text_input(col, key=widget_key, placeholder=f"Contains in {col}")
+                    if q:
+                        filtered = filtered[series_str.str.contains(q, case=False, na=False)]
     return filtered
 
 
@@ -288,6 +299,19 @@ def render_login():
 if not st.session_state.logged_in:
     render_login()
     st.stop()
+
+
+def select_primary_post_order(post_df):
+    if post_df.empty:
+        return post_df
+    ranked = post_df.copy()
+    ranked["service_name_norm"] = ranked["service_name"].astype(str).str.lower().str.replace(r"\s+", " ", regex=True).str.strip()
+    ranked["is_combo_priority"] = ranked["service_name_norm"].str.contains("power of trading & investing combo course", na=False)
+    ranked = ranked.sort_values(
+        ["mobile_clean", "Seminar Date", "is_combo_priority", "order_date", "total_amount"],
+        ascending=[True, True, False, True, False],
+    )
+    return ranked.drop_duplicates(["mobile_clean", "Seminar Date"], keep="first")
 
 
 @st.cache_data(show_spinner=False)
@@ -382,19 +406,31 @@ def process_all(sem_bytes, conv_bytes, lead_bytes):
 
     post = merged[merged["after_seminar"]].copy()
     if not post.empty:
-        post = post.sort_values(["mobile_clean", "Seminar Date", "order_date", "total_amount"], ascending=[True, True, True, False])
-        first_post = post.drop_duplicates(["mobile_clean", "Seminar Date"], keep="first")
+        first_post = select_primary_post_order(post)
+        later_post_orders = post.merge(
+            first_post[["mobile_clean", "Seminar Date", "order_date", "service_name_norm"]].rename(
+                columns={"order_date": "primary_order_date", "service_name_norm": "primary_service_name_norm"}
+            ),
+            on=["mobile_clean", "Seminar Date"],
+            how="left",
+        )
+        later_post_orders = later_post_orders[
+            (later_post_orders["order_date"] > later_post_orders["primary_order_date"]) |
+            ((later_post_orders["order_date"] == later_post_orders["primary_order_date"]) & (later_post_orders["service_name_norm"] != later_post_orders["primary_service_name_norm"]))
+        ].copy()
+        later_post_orders = later_post_orders.sort_values(["mobile_clean", "Seminar Date", "order_date", "total_amount"], ascending=[True, True, True, False])
     else:
         first_post = attended.copy()
         for col in conv.columns:
             if col not in first_post.columns:
                 first_post[col] = pd.NA
         first_post["after_seminar"] = False
+        later_post_orders = pd.DataFrame(columns=list(merged.columns) + ["primary_order_date", "primary_service_name_norm"])
 
     selected_cols = [
         "mobile_clean", "Seminar Date", "order_date", "service_name", "payment_received",
         "total_amount", "total_due", "status", "sales_rep_name", "payment_mode",
-        "trainer_name", "month", "due_zero", "after_seminar", "student_name", "email"
+        "trainer_name", "month", "due_zero", "after_seminar", "student_name", "email", "service_name_norm"
     ]
     base = attended.merge(first_post[[c for c in selected_cols if c in first_post.columns]], on=["mobile_clean", "Seminar Date"], how="left")
     base = base.merge(leads_one, left_on="mobile_clean", right_on="phone_clean", how="left")
@@ -426,6 +462,7 @@ def process_all(sem_bytes, conv_bytes, lead_bytes):
         "master": base,
         "combo_base": combo_first,
         "combo_other_orders": later_orders,
+        "attendee_later_orders": later_post_orders,
     }
 
 
@@ -696,6 +733,28 @@ with t2:
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.markdown('<div class="panel-title"><h3>Additional Courses After Preferred Order</h3><p>When a student has multiple post-seminar orders, the main record keeps the combo course first when available, and this table shows the other courses purchased later.</p></div>', unsafe_allow_html=True)
+    later_attendee_orders = D["attendee_later_orders"].copy()
+    if not later_attendee_orders.empty:
+        allowed_pairs = filtered[["mobile_clean", "Seminar Date"]].drop_duplicates()
+        later_attendee_orders = later_attendee_orders.merge(allowed_pairs, on=["mobile_clean", "Seminar Date"], how="inner")
+        course_buyers = later_attendee_orders.groupby("service_name", dropna=False).agg(Students=("mobile_clean", "nunique"), Orders=("mobile_clean", "count"), Paid=("payment_received", "sum")).reset_index().sort_values(["Students", "Orders"], ascending=False)
+        course_buyers["service_name"] = course_buyers["service_name"].replace("", "Unknown")
+        y1, y2 = st.columns([1.0, 1.4])
+        with y1:
+            safe_plot_bar(course_buyers.head(15), "service_name", "Students", height=340, horizontal=True)
+        with y2:
+            show_later = later_attendee_orders[["NAME", "mobile_clean", "Seminar Date", "service_name", "order_date", "payment_received", "total_due", "status"]].copy()
+            show_later = show_later.rename(columns={"NAME": "Student Name", "mobile_clean": "Mobile", "service_name": "Other Course", "order_date": "Other Course Order Date", "payment_received": "Paid", "total_due": "Due", "status": "Order Status"})
+            show_later["Seminar Date"] = pd.to_datetime(show_later["Seminar Date"], errors="coerce").dt.strftime("%d %b %Y")
+            show_later["Other Course Order Date"] = pd.to_datetime(show_later["Other Course Order Date"], errors="coerce").dt.strftime("%d %b %Y")
+            show_later = apply_excel_style_filters(show_later, list(show_later.columns), key_prefix="latercourses")
+            st.dataframe(show_later, use_container_width=True, hide_index=True, height=340)
+    else:
+        st.info("No additional post-seminar courses found beyond the preferred primary order.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
     st.markdown('<div class="panel-title"><h3>Lead Intelligence Table</h3><p>Cross-check attendee → conversion → lead source path. Every displayed column now has its own filter box.</p></div>', unsafe_allow_html=True)
     lead_columns = [
         "NAME", "mobile_clean", "Seminar Date", "Place", "Session", "Trainer Norm", "service_name",
@@ -732,7 +791,7 @@ with t2:
     })
     lead_table["Seminar Date"] = pd.to_datetime(lead_table["Seminar Date"], errors="coerce").dt.strftime("%d %b %Y")
     lead_table["Order Date"] = pd.to_datetime(lead_table["Order Date"], errors="coerce").dt.strftime("%d %b %Y")
-    filtered_lead_table = apply_text_filters(lead_table, list(lead_table.columns), key_prefix="leadtable")
+    filtered_lead_table = apply_excel_style_filters(lead_table, list(lead_table.columns), key_prefix="leadtable")
     st.dataframe(filtered_lead_table, use_container_width=True, hide_index=True, height=460)
     st.markdown('</div>', unsafe_allow_html=True)
 
