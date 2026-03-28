@@ -697,12 +697,17 @@ with t2:
 
     st.markdown('<div class="panel">', unsafe_allow_html=True)
     st.markdown('<div class="panel-title"><h3>Lead Intelligence Table</h3><p>Cross-check attendee → conversion → lead source path. Every displayed column now has its own filter box.</p></div>', unsafe_allow_html=True)
-    lead_table = filtered[[
+    lead_columns = [
         "NAME", "mobile_clean", "Seminar Date", "Place", "Session", "Trainer Norm", "service_name",
         "payment_received", "total_due", "order_date", "conversion_status", "lead_origin",
         "lead_source_name", "campaign_name", "leadstatus", "stage_name", "leadownername",
         "state", "Attempted/Unattempted", "servicename", "name", "email", "remarks"
-    ]].copy()
+    ]
+    lead_table = filtered.copy()
+    for col in lead_columns:
+        if col not in lead_table.columns:
+            lead_table[col] = ""
+    lead_table = lead_table[lead_columns].copy()
     lead_table = lead_table.rename(columns={
         "NAME": "Student Name",
         "mobile_clean": "Mobile",
